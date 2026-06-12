@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#FAFAFA" />
+    </linearGradient>
+    <!-- Main LoveSpace Pink Gradient -->
+    <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF5C8A" />
+      <stop offset="60%" stop-color="#FF80A4" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Outer smooth container -->
+  <rect width="512" height="512" rx="128" fill="url(#bg-grad)" />
+  
+  <!-- Abstract Cosmic Heart / Orbit Lines -->
+  <g transform="translate(256, 256)">
+    <!-- Orbit Ring 1 (Partner 1) -->
+    <ellipse cx="0" cy="0" rx="160" ry="60" fill="none" stroke="url(#logo-grad)" stroke-width="16" transform="rotate(-30)" opacity="0.3" stroke-dasharray="10 15" />
+    
+    <!-- Orbit Ring 2 (Partner 2) -->
+    <ellipse cx="0" cy="0" rx="160" ry="60" fill="none" stroke="url(#logo-grad)" stroke-width="16" transform="rotate(30)" opacity="0.3" stroke-dasharray="10 15" />
+
+    <!-- Connecting fluid heart shape -->
+    <path d="M 0,-80 
+             C -45,-140 -120,-120 -120,-60 
+             C -120,0 -40,60 0,110 
+             C 40,60 120,0 120,-60 
+             C 120,-120 45,-140 0,-80 Z" 
+          fill="url(#logo-grad)" 
+          filter="url(#glow)" />
+          
+    <!-- Central warm glow -->
+    <circle cx="0" cy="-10" r="30" fill="#FFFFFF" opacity="0.25" filter="url(#glow)" />
+    
+    <!-- Spark / Star (representing Space) -->
+    <path d="M -30,-90 Q 0,-90 0,-120 Q 0,-90 30,-90 Q 0,-90 0,-60 Q 0,-90 -30,-90 Z" fill="#FFFFFF" filter="url(#glow)" />
+    <path d="M 60,30 Q 80,30 80,10 Q 80,30 100,30 Q 80,30 80,50 Q 80,30 60,30 Z" fill="#FFFFFF" opacity="0.8" />
+  </g>
+</svg>

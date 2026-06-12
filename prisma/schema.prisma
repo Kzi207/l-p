@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  avatar       String?
+  coupleId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  couple       Couple?   @relation(fields: [coupleId], references: [id], onDelete: SetNull)
+  createdPairs Couple[]  @relation("CoupleCreator")
+  memories     Memory[]  @relation("MemoryAuthor")
+  journals     Journal[] @relation("JournalAuthor")
+  events       Event[]   @relation("EventAuthor")
+}
+
+model Couple {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  startDate   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String
+  createdBy   User      @relation("CoupleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  users       User[]
+  memories    Memory[]
+  journals    Journal[]
+  events      Event[]
+  notes       Note[]
+}
+
+model Memory {
+  id        String   @id @default(cuid())
+  imageUrl  String
+  caption   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coupleId  String
+  authorId  String
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  author    User     @relation("MemoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId, createdAt(sort: Desc)])
+}
+
+model Journal {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coupleId  String
+  authorId  String
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  author    User     @relation("JournalAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId, createdAt(sort: Desc)])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  title     String
+  eventDate DateTime
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coupleId  String
+  authorId  String?
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  author    User?    @relation("EventAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([coupleId, eventDate(sort: Asc)])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  content   String
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coupleId  String
+  couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId, updatedAt(sort: Desc)])
+}

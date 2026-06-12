@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f1eb;
+  --foreground: #141414;
+  --font-app-sans: "Aptos", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-app-mono: "Cascadia Code", "SFMono-Regular", monospace;
+  --color-background: #f5f1eb;
+  --color-surface: rgba(255, 255, 255, 0.78);
+  --color-surface-strong: #ffffff;
+  --color-panel-dark: #131313;
+  --color-primary: #ff6b93;
+  --color-primary-deep: #ff4f82;
+  --color-text: #141414;
+  --color-muted: #6f6b67;
+  --color-border: rgba(20, 20, 20, 0.08);
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --shadow-soft: 0 18px 60px rgba(20, 20, 20, 0.08);
+  --shadow-panel: 0 30px 80px rgba(20, 20, 20, 0.12);
 }
 
-@theme inline {
+@theme {
+  --font-sans: var(--font-app-sans);
+  --font-mono: var(--font-app-mono);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--color-surface);
+  --color-surface-strong: var(--color-surface-strong);
+  --color-panel-dark: var(--color-panel-dark);
+  --color-primary: var(--color-primary);
+  --color-primary-deep: var(--color-primary-deep);
+  --color-text: var(--color-text);
+  --color-muted: var(--color-muted);
+  --color-border: var(--color-border);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
+  --color-secondary: #f4f4f5;
+  --color-muted-foreground: var(--color-muted);
+  --color-primary-foreground: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(255, 107, 147, 0.14), transparent 22%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.8), transparent 18%),
+    radial-gradient(circle at bottom right, rgba(17, 24, 39, 0.08), transparent 20%),
+    linear-gradient(180deg, #f7f4ef 0%, #f3eee8 100%);
+  color: var(--color-text);
+  font-family: var(--font-app-sans);
 }
+
+button,
+a,
+input,
+textarea {
+  outline-offset: 4px;
+}
+
+::selection {
+  background: rgba(255, 107, 147, 0.18);
+}
+
+.safe-area-pb {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+}
+
+.safe-area-pt {
+  padding-top: calc(env(safe-area-inset-top) + 8px);
+}
+
