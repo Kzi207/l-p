@@ -35,7 +35,7 @@ export function GlobalNotifications() {
   if (!user || !couple || loading) return null;
 
   return <>
-    <button className="fixed bottom-[7.5rem] right-4 z-40 grid size-12 place-items-center rounded-full border border-white/80 bg-[#fffaf5]/95 text-[#c9687a] shadow-[0_8px_25px_rgba(114,75,66,.22)] backdrop-blur-xl transition active:scale-95 sm:right-6" type="button" onClick={() => setOpen(true)} aria-label={`Mở thông báo${unread ? `, ${unread} chưa đọc` : ""}`} title="Xem thông báo">
+    <button className="global-notifications-trigger fixed bottom-[7.5rem] right-4 z-40 grid size-12 place-items-center rounded-full border border-white/80 bg-[#fffaf5]/95 text-[#c9687a] shadow-[0_8px_25px_rgba(114,75,66,.22)] backdrop-blur-xl transition active:scale-95 sm:right-6" type="button" onClick={() => setOpen(true)} aria-label={`Mở thông báo${unread ? `, ${unread} chưa đọc` : ""}`} title="Xem thông báo">
       {pushStatus === "granted" ? <BellRing className="size-5" /> : <Bell className="size-5" />}
       {unread > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-[#e15e75] px-1 text-[10px] font-extrabold text-white ring-2 ring-[#fff8f0]">{unread > 9 ? "9+" : unread}</span>}
     </button>

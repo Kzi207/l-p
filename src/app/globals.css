@@ -103,3 +103,48 @@ a {
 .memory-masonry-column > * {
   margin-bottom: 0.85rem;
 }
+
+/* Khi bàn phím điện thoại mở trong chat, chỉ giữ vùng soạn tin sát bàn phím. */
+body.locket-keyboard-open {
+  overflow: hidden;
+}
+
+body.locket-keyboard-open .bottom-nav,
+body.locket-keyboard-open .global-notifications-trigger {
+  display: none;
+}
+
+body.locket-keyboard-open .locket-chat {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  border-radius: 0;
+}
+
+body.locket-keyboard-open .locket-chat-header {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+body.locket-keyboard-open .locket-chat-messages {
+  padding-bottom: 6rem;
+}
+
+body.locket-keyboard-open .locket-chat-end {
+  scroll-margin-bottom: 6rem;
+}
+
+body.locket-keyboard-open .locket-chat-composer {
+  position: fixed;
+  z-index: 60;
+  right: auto;
+  bottom: 0;
+  left: 50%;
+  width: min(calc(100% - 1rem), 36rem);
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 1.5rem 1.5rem 0 0;
+  box-shadow: 0 -10px 30px rgba(100, 70, 55, 0.14);
+}
