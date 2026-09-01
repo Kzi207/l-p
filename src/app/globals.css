@@ -1,45 +1,15 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #f5f1eb;
-  --foreground: #141414;
-  --font-app-sans: "Aptos", "Segoe UI Variable Display", "Segoe UI", sans-serif;
-  --font-app-mono: "Cascadia Code", "SFMono-Regular", monospace;
-  --color-background: #f5f1eb;
-  --color-surface: rgba(255, 255, 255, 0.78);
-  --color-surface-strong: #ffffff;
-  --color-panel-dark: #131313;
-  --color-primary: #ff6b93;
-  --color-primary-deep: #ff4f82;
-  --color-text: #141414;
-  --color-muted: #6f6b67;
-  --color-border: rgba(20, 20, 20, 0.08);
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --shadow-soft: 0 18px 60px rgba(20, 20, 20, 0.08);
-  --shadow-panel: 0 30px 80px rgba(20, 20, 20, 0.12);
-}
-
-@theme {
-  --font-sans: var(--font-app-sans);
-  --font-mono: var(--font-app-mono);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--color-surface);
-  --color-surface-strong: var(--color-surface-strong);
-  --color-panel-dark: var(--color-panel-dark);
-  --color-primary: var(--color-primary);
-  --color-primary-deep: var(--color-primary-deep);
-  --color-text: var(--color-text);
-  --color-muted: var(--color-muted);
-  --color-border: var(--color-border);
-  --color-success: var(--color-success);
-  --color-warning: var(--color-warning);
-  --color-danger: var(--color-danger);
-  --color-secondary: #f4f4f5;
-  --color-muted-foreground: var(--color-muted);
-  --color-primary-foreground: #ffffff;
+  --cream: #fff8f0;
+  --cream-deep: #f7eadf;
+  --blush: #ffb6c1;
+  --blush-deep: #ef8fa0;
+  --cocoa: #4a3b34;
+  --muted: #8b756a;
+  --white: #fffdf9;
 }
 
 * {
@@ -47,36 +17,89 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  background: var(--cream);
+  color: var(--cocoa);
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   margin: 0;
+  min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(255, 107, 147, 0.14), transparent 22%),
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.8), transparent 18%),
-    radial-gradient(circle at bottom right, rgba(17, 24, 39, 0.08), transparent 20%),
-    linear-gradient(180deg, #f7f4ef 0%, #f3eee8 100%);
-  color: var(--color-text);
-  font-family: var(--font-app-sans);
+    radial-gradient(circle at 15% 4%, rgba(255, 182, 193, 0.28), transparent 24rem),
+    radial-gradient(circle at 90% 26%, rgba(255, 221, 193, 0.38), transparent 26rem),
+    var(--cream);
+  font-family: var(--font-inter), sans-serif;
 }
 
 button,
-a,
 input,
 textarea {
-  outline-offset: 4px;
+  font: inherit;
+}
+
+button,
+a {
+  touch-action: manipulation;
 }
 
 ::selection {
-  background: rgba(255, 107, 147, 0.18);
+  background: var(--blush);
+  color: var(--cocoa);
 }
 
-.safe-area-pb {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+@layer components {
+  .app-frame {
+    @apply mx-auto w-full max-w-xl;
+  }
+
+  .soft-card {
+    @apply rounded-[2rem] border border-white/70 bg-white/45 shadow-soft backdrop-blur-xl;
+  }
+
+  .soft-input {
+    @apply w-full rounded-2xl border border-white/80 bg-[#fffaf5] px-4 py-3 text-cocoa outline-none shadow-insetSoft transition placeholder:text-[#b9a79e] focus:ring-2 focus:ring-blush/60;
+  }
+
+  .primary-button {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blush px-5 py-3 font-bold text-cocoa shadow-soft transition hover:-translate-y-0.5 hover:bg-[#ffa9b7] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .secondary-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/55 px-4 py-2 font-semibold text-cocoa shadow-soft transition hover:bg-white/80 active:scale-[0.98];
+  }
 }
 
-.safe-area-pt {
-  padding-top: calc(env(safe-area-inset-top) + 8px);
+@keyframes gradient-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
+@keyframes float-heart {
+  0%, 100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(5deg);
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.memory-masonry-grid {
+  display: flex;
+  width: auto;
+  margin-left: -0.85rem;
+}
+
+.memory-masonry-column {
+  padding-left: 0.85rem;
+  background-clip: padding-box;
+}
+
+.memory-masonry-column > * {
+  margin-bottom: 0.85rem;
+}

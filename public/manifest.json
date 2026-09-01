@@ -1,0 +1,18 @@
+{
+  "name": "Love Days",
+  "short_name": "Love Days",
+  "description": "Góc nhỏ lưu những ngày mình yêu nhau.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FFB6C1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,216 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isCoupleMember(coupleId) {
+      return signedIn()
+        && myProfile().data.coupleId == coupleId
+        && get(/databases/$(database)/documents/couples/$(coupleId)).data.memberIds.hasAny([request.auth.uid]);
+    }
+
+    function isLeavingCouple(userId) {
+      let oldCoupleId = resource.data.coupleId;
+      let oldCouple = get(/databases/$(database)/documents/couples/$(oldCoupleId));
+      return oldCoupleId is string
+        && oldCouple.data.memberIds.hasAny([request.auth.uid])
+        && oldCouple.data.memberIds.hasAny([userId])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coupleId'])
+        && request.resource.data.coupleId == null
+        && getAfter(/databases/$(database)/documents/couples/$(oldCoupleId)).data.endedAt == request.time;
+    }
+
+    function isValidPairing(coupleId, userId) {
+      let couple = getAfter(/databases/$(database)/documents/couples/$(coupleId));
+      let invite = get(/databases/$(database)/documents/pairInvites/$(couple.data.inviteId));
+      return couple.data.memberIds.size() == 2
+        && couple.data.memberIds.hasAll([request.auth.uid, userId])
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.coupleId == coupleId
+        && getAfter(/databases/$(database)/documents/users/$(invite.data.ownerId)).data.coupleId == coupleId
+        && invite.data.status == 'active'
+        && invite.data.ownerId != request.auth.uid
+        && couple.data.memberIds.hasAny([invite.data.ownerId])
+        && (invite.data.targetUid == '' || invite.data.targetUid == request.auth.uid);
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (
+        request.auth.uid == userId
+        || (
+          resource.data.keys().hasAny(['coupleId'])
+          && resource.data.coupleId != null
+          && myProfile().data.coupleId == resource.data.coupleId
+        )
+      );
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['displayName', 'email', 'nickname', 'birthday', 'bio', 'photoURL', 'coupleId', 'fcmTokens'])
+        && request.resource.data.coupleId == null;
+      allow update: if signedIn() && (
+        (
+          request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'nickname', 'birthday', 'bio', 'photoURL', 'fcmTokens'])
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coupleId'])
+          && (!resource.data.keys().hasAny(['coupleId']) || resource.data.coupleId == null)
+          && request.resource.data.coupleId is string
+          && isValidPairing(request.resource.data.coupleId, userId)
+        )
+        || isLeavingCouple(userId)
+      );
+      allow delete: if false;
+    }
+
+    match /pairInvites/{inviteId} {
+      allow read: if signedIn() && (
+        resource.data.ownerId == request.auth.uid
+        || resource.data.targetUid == ''
+        || resource.data.targetUid == request.auth.uid
+      );
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['ownerId', 'ownerName', 'targetUid', 'status', 'createdAt'])
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerName is string
+        && request.resource.data.targetUid is string
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && (!myProfile().data.keys().hasAny(['coupleId']) || myProfile().data.coupleId == null);
+      allow update: if signedIn()
+        && resource.data.status == 'active'
+        && resource.data.ownerId != request.auth.uid
+        && (resource.data.targetUid == '' || resource.data.targetUid == request.auth.uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acceptedBy', 'coupleId'])
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.acceptedBy == request.auth.uid
+        && request.resource.data.coupleId is string
+        && isValidPairing(request.resource.data.coupleId, resource.data.ownerId);
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /couples/{coupleId} {
+      allow read: if isCoupleMember(coupleId);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['memberIds', 'startDate', 'createdAt', 'inviteId'])
+        && request.resource.data.memberIds is list
+        && request.resource.data.memberIds.size() == 2
+        && request.resource.data.startDate == null
+        && request.resource.data.createdAt == request.time
+        && isValidPairing(coupleId, request.auth.uid);
+      allow update: if isCoupleMember(coupleId) && (
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['startDate'])
+          && request.resource.data.startDate is timestamp
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endedAt'])
+          && request.resource.data.endedAt == request.time
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.memberIds[0])).data.coupleId == null
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.memberIds[1])).data.coupleId == null
+        )
+      );
+      allow delete: if false;
+
+      match /photos/{photoId} {
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly(['imageUrl', 'cloudinaryPublicId', 'caption', 'reaction', 'createdAt', 'uploaderId', 'uploaderName'])
+          && request.resource.data.uploaderId == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.caption is string
+          && request.resource.data.caption.size() <= 100;
+        allow update: if isCoupleMember(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reaction'])
+          && request.resource.data.reaction in ['❤️', '🥰', '😘', '✨'];
+        allow delete: if false;
+      }
+
+      match /memories/{memoryId} {
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly(['title', 'description', 'date', 'imageUrl', 'cloudinaryPublicId', 'tags', 'createdAt', 'uploaderId', 'uploaderName'])
+          && request.resource.data.uploaderId == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 80
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 1000
+          && request.resource.data.tags is list
+          && request.resource.data.tags.size() <= 8;
+        allow update: if isCoupleMember(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'description', 'date', 'tags']);
+        allow delete: if isCoupleMember(coupleId);
+      }
+
+      match /locketPosts/{postId} {
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly(['imageUrl', 'cloudinaryPublicId', 'caption', 'reactions', 'createdAt', 'uploaderId', 'uploaderName', 'uploaderPhotoUrl'])
+          && request.resource.data.uploaderId == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.caption is string
+          && request.resource.data.caption.size() <= 200
+          && request.resource.data.reactions == {};
+        allow update: if isCoupleMember(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([request.auth.uid])
+          && request.resource.data.reactions[request.auth.uid] in ['❤️', '🥰', '😂', '😮', '😭', '😘'];
+        allow delete: if isCoupleMember(coupleId) && resource.data.uploaderId == request.auth.uid;
+
+        match /replies/{replyId} {
+          allow read: if isCoupleMember(coupleId);
+          allow create: if isCoupleMember(coupleId)
+            && request.resource.data.keys().hasOnly(['text', 'createdAt', 'senderId', 'senderName', 'senderPhotoUrl'])
+            && request.resource.data.senderId == request.auth.uid
+            && request.resource.data.createdAt == request.time
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0
+            && request.resource.data.text.size() <= 500;
+          allow update, delete: if false;
+        }
+      }
+
+      match /locketMessages/{messageId} {
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly(['text', 'createdAt', 'senderId', 'senderName', 'senderPhotoUrl'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+        allow update, delete: if false;
+      }
+
+      match /mediaMemories/{mediaId} {
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly(['mediaUrl', 'cloudinaryPublicId', 'mediaType', 'caption', 'takenAt', 'createdAt', 'uploaderId', 'uploaderName'])
+          && request.resource.data.uploaderId == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.mediaType in ['image', 'video']
+          && request.resource.data.caption is string
+          && request.resource.data.caption.size() <= 300
+          && request.resource.data.takenAt is timestamp;
+        allow update: if isCoupleMember(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['caption', 'takenAt'])
+          && request.resource.data.caption is string
+          && request.resource.data.caption.size() <= 300;
+        allow delete: if isCoupleMember(coupleId) && resource.data.uploaderId == request.auth.uid;
+      }
+    }
+
+    // Dữ liệu cũ được giữ lại nhưng không còn mở cho client sau khi chuyển sang không gian riêng theo cặp.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

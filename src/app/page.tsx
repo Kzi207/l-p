@@ -1,13 +1,17 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { auth } from "@/auth";
+import { LoginScreen } from "@/components/auth/login-screen";
+import { HomeScreen } from "@/components/home/home-screen";
+import { ConfigurationMissing } from "@/components/shared/app-states";
+import { useAuth } from "@/components/providers/auth-provider";
+import { isFirebaseConfigured } from "@/lib/firebase";
 
-export default async function HomePage() {
-  const session = await auth();
+export default function HomePage() {
+  const { user } = useAuth();
 
-  if (session?.user?.id) {
-    redirect("/dashboard");
-  }
-
-  redirect("/login");
+  if (!isFirebaseConfigured) return <ConfigurationMissing />;
+  // Không khóa màn hình trong lúc Firebase khôi phục session; người dùng có thể
+  // bấm đăng nhập Google ngay, session cũ vẫn tự cập nhật khi listener hoàn tất.
+  if (!user) return <LoginScreen />;
+  return <HomeScreen user={user} />;
 }

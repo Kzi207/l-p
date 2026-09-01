@@ -1,90 +1,65 @@
-export function formatDistanceToNow(dateString: string) {
-  try {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSecs = Math.floor(diffMs / 1000);
-    const diffMins = Math.floor(diffSecs / 60);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffSecs < 60) return "vừa xong";
-    if (diffMins < 60) return `${diffMins} phút trước`;
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    if (diffDays < 30) return `${diffDays} ngày trước`;
-    
-    const diffMonths = Math.floor(diffDays / 30);
-    if (diffMonths < 12) return `${diffMonths} tháng trước`;
-    
-    return `${Math.floor(diffMonths / 12)} năm trước`;
-  } catch (error) {
-    return dateString;
-  }
+export interface LoveDuration {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
 }
 
-export function formatDate(dateString: string) {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+export interface UpcomingMilestone {
+  label: string;
+  date: Date;
+  daysLeft: number;
+}
+
+export function getLoveDuration(startDate: Date, now = new Date()): LoveDuration {
+  const difference = Math.max(0, now.getTime() - startDate.getTime());
+  const totalSeconds = Math.floor(difference / 1000);
+
+  return {
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
+export function getUpcomingMilestone(startDate: Date, now = new Date()): UpcomingMilestone {
+  const dayMs = 86_400_000;
+  const elapsedDays = Math.max(0, Math.floor((now.getTime() - startDate.getTime()) / dayMs));
+  const candidates: Array<{ label: string; date: Date }> = [];
+
+  const nextHundred = Math.max(100, Math.ceil((elapsedDays + 1) / 100) * 100);
+  for (let days = nextHundred; days <= nextHundred + 400; days += 100) {
+    candidates.push({
+      label: `${days.toLocaleString("vi-VN")} ngày bên nhau`,
+      date: new Date(startDate.getTime() + days * dayMs),
     });
-  } catch (error) {
-    return dateString;
   }
+
+  const currentYearOffset = Math.max(1, now.getFullYear() - startDate.getFullYear());
+  for (let years = currentYearOffset; years <= currentYearOffset + 3; years += 1) {
+    const date = new Date(startDate);
+    date.setFullYear(startDate.getFullYear() + years);
+    candidates.push({ label: `${years} năm yêu nhau`, date });
+  }
+
+  const next = candidates
+    .filter((candidate) => candidate.date.getTime() > now.getTime())
+    .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
+
+  return {
+    ...next,
+    daysLeft: Math.max(1, Math.ceil((next.date.getTime() - now.getTime()) / dayMs)),
+  };
 }
 
-export function formatShortDate(dateString: string) {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      month: "short",
-      day: "numeric",
-    });
-  } catch (error) {
-    return dateString;
-  }
-}
-
-export function getDaysCountdown(dateString: string) {
-  try {
-    const now = new Date();
-    const target = new Date(dateString);
-    // Set hours to 0 to compare days properly
-    now.setHours(0, 0, 0, 0);
-    target.setHours(0, 0, 0, 0);
-    
-    const diffTime = target.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  } catch (error) {
-    return 0;
-  }
-}
-
-export function calculateDetailedTime(startDateStr: string) {
-  try {
-    const start = new Date(startDateStr);
-    const now = new Date();
-    
-    const diffMs = now.getTime() - start.getTime();
-    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = now.getHours(); // simplified breakdown
-    
-    // Approximate breakdown
-    const years = Math.floor(totalDays / 365);
-    const months = Math.floor((totalDays % 365) / 30);
-    const days = (totalDays % 365) % 30;
-    
-    return {
-      totalDays,
-      years,
-      months,
-      days,
-      hours
-    };
-  } catch (error) {
-    return { totalDays: 0, years: 0, months: 0, days: 0, hours: 0 };
-  }
+export function formatCountdown(milliseconds: number): string {
+  if (milliseconds <= 0) return "Bạn có thể đăng ảnh mới ngay bây giờ";
+  const totalSeconds = Math.ceil(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
 }
