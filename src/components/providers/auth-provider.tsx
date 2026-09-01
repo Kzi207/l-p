@@ -2,6 +2,7 @@
 
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { AppLoading } from "@/components/shared/app-states";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
 
 interface AuthContextValue {
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(() => ({ user, loading }), [user, loading]);
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{loading ? <AppLoading /> : children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

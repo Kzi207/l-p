@@ -33,7 +33,11 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    setProfile(null);
+    setPartner(null);
+    setCouple(null);
     setLoading(true);
+    setError("");
     const userRef = doc(db, "users", user.uid);
     return onSnapshot(userRef, async (snapshot) => {
       if (!snapshot.exists()) {
@@ -48,8 +52,13 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-      setProfile(snapshot.data() as UserDocument);
-      setLoading(false);
+      const nextProfile = snapshot.data() as UserDocument;
+      setProfile(nextProfile);
+      if (!nextProfile.coupleId) {
+        setCouple(null);
+        setPartner(null);
+        setLoading(false);
+      }
       setError("");
     }, (caught) => {
       setLoading(false);
@@ -58,22 +67,28 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (!db || !user || !profile?.coupleId) {
+    if (!db || !user || !profile) return;
+    if (!profile.coupleId) {
       setCouple(null);
       setPartner(null);
+      setLoading(false);
       return;
     }
     const database = db;
     const coupleId = profile.coupleId;
+    setLoading(true);
     let unsubscribePartner: () => void = () => {};
     const unsubscribeCouple = onSnapshot(doc(database, "couples", coupleId), (snapshot) => {
       if (!snapshot.exists()) {
         setCouple(null);
+        setLoading(false);
         setError("Không tìm thấy không gian ghép đôi.");
         return;
       }
       const nextCouple = { id: snapshot.id, ...snapshot.data() } as CoupleInfo & { id: string };
       setCouple(nextCouple);
+      setLoading(false);
+      setError("");
       const partnerId = nextCouple.memberIds.find((id) => id !== user.uid);
       unsubscribePartner();
       if (partnerId) {
@@ -81,12 +96,15 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
           setPartner(partnerSnapshot.exists() ? partnerSnapshot.data() as UserDocument : null);
         });
       }
-    }, (caught) => setError(`Không thể đọc thông tin cặp đôi (${caught.code}).`));
+    }, (caught) => {
+      setLoading(false);
+      setError(`Không thể đọc thông tin cặp đôi (${caught.code}).`);
+    });
     return () => {
       unsubscribeCouple();
       unsubscribePartner();
     };
-  }, [profile?.coupleId, user]);
+  }, [profile, user]);
 
   const value = useMemo(() => ({ profile, partner, couple, loading, error }), [profile, partner, couple, loading, error]);
   return <CoupleContext.Provider value={value}>{children}</CoupleContext.Provider>;

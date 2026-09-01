@@ -5,8 +5,8 @@ export function AppLoading() {
     <main className="grid min-h-dvh place-items-center px-5" aria-label="Đang tải Love Days">
       <div className="text-center">
         <Heart className="mx-auto size-12 animate-pulse fill-blush text-blush" />
-        <p className="mt-4 font-handwritten text-2xl text-[#a56f78]">Đang kết nối Firebase...</p>
-        <p className="mt-1 text-xs text-[#9b887e]">Nếu mạng chậm, màn hình đăng nhập sẽ xuất hiện sau ít giây.</p>
+        <p className="mt-4 font-handwritten text-2xl text-[#a56f78]">Đang mở Love Days...</p>
+        <p className="mt-1 text-xs text-[#9b887e]">Đang khôi phục phiên đăng nhập và không gian của hai bạn.</p>
       </div>
     </main>
   );

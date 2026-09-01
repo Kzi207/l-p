@@ -7,11 +7,10 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { isFirebaseConfigured } from "@/lib/firebase";
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   if (!isFirebaseConfigured) return <ConfigurationMissing />;
-  // Không khóa màn hình trong lúc Firebase khôi phục session; người dùng có thể
-  // bấm đăng nhập Google ngay, session cũ vẫn tự cập nhật khi listener hoàn tất.
+  if (loading) return null;
   if (!user) return <LoginScreen />;
   return <HomeScreen user={user} />;
 }
