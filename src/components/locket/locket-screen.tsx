@@ -2,8 +2,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { motion } from "framer-motion";
-import { collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
-import { Camera, ChevronDown, Heart, ImagePlus, MessageCircle, MessagesSquare, RefreshCw, SwitchCamera, Upload } from "lucide-react";
+import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { Camera, ChevronDown, Heart, ImagePlus, LoaderCircle, MessageCircle, MessagesSquare, RefreshCw, SwitchCamera, Trash2, Upload } from "lucide-react";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -22,6 +22,8 @@ const EMOJIS = ["❤️", "🥰", "😂", "😮", "😭", "😘"];
 
 function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post: Post; userId: string; onReply: () => void }) {
   const [reactionsOpen, setReactionsOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const reactionCounts = Object.values(post.reactions || {}).reduce<Record<string, number>>((counts, emoji) => {
     counts[emoji] = (counts[emoji] || 0) + 1;
     return counts;
@@ -33,16 +35,31 @@ function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post:
     setReactionsOpen(false);
   }
 
+  async function deletePost() {
+    if (!db || post.uploaderId !== userId) return;
+    if (!window.confirm("Xóa ảnh Locket này? Ảnh sẽ biến mất với cả hai người và không thể khôi phục.")) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteDoc(doc(db, "couples", coupleId, "locketPosts", post.id));
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Chưa thể xóa ảnh Locket.");
+      setDeleting(false);
+    }
+  }
+
   const createdAt = post.createdAt?.toDate?.();
 
   return (
     <motion.article className="soft-card overflow-hidden" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}>
       <div className="flex items-center gap-3 px-4 py-3">
         {post.uploaderPhotoUrl ? <span className="size-10 overflow-hidden rounded-full bg-blush/30">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={post.uploaderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-10 place-items-center rounded-full bg-blush/45 font-bold">{post.uploaderName.slice(0, 1)}</span>}
-        <div><p className="text-sm font-bold">{post.uploaderName}</p><p className="text-[10px] text-[#9b857b]">{createdAt ? createdAt.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "Vừa đăng"}</p></div>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{post.uploaderName}</p><p className="text-[10px] text-[#9b857b]">{createdAt ? createdAt.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "Vừa đăng"}</p></div>
+        {post.uploaderId === userId && <button className="grid size-9 shrink-0 place-items-center rounded-full text-[#a36f78] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50" type="button" onClick={deletePost} disabled={deleting} aria-label="Xóa ảnh Locket" title="Xóa ảnh">{deleting ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}</button>}
       </div>
       <div className="aspect-square overflow-hidden bg-[#eadbd0]">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={post.imageUrl} alt={post.caption || "Ảnh Locket"} className="size-full object-cover" /></div>
       <div className="p-4">
+        {deleteError && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{deleteError}</p>}
         {post.caption && <p className="font-handwritten text-xl leading-6 text-[#664e46]">{post.caption}</p>}
         {Object.keys(reactionCounts).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{Object.entries(reactionCounts).map(([emoji, count]) => <span className="rounded-full bg-white/75 px-2.5 py-1 text-sm shadow-sm" key={emoji}>{emoji} <b className="text-xs">{count}</b></span>)}</div>}
         <div className="relative mt-4 flex gap-2">

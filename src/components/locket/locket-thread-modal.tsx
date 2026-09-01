@@ -2,9 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { AnimatePresence, motion } from "framer-motion";
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
 import type { User } from "firebase/auth";
-import { LoaderCircle, Send, X } from "lucide-react";
+import { LoaderCircle, Send, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import type { LocketPostDocument, LocketReplyDocument, UserDocument } from "@/types/firestore";
@@ -16,6 +16,7 @@ export function LocketThreadModal({ post, user, coupleId, profile, onClose }: { 
   const [replies, setReplies] = useState<Reply[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -48,6 +49,20 @@ export function LocketThreadModal({ post, user, coupleId, profile, onClose }: { 
     }
   }
 
+  async function recallReply(reply: Reply) {
+    if (!db || !post || reply.senderId !== user.uid) return;
+    if (!window.confirm("Thu hồi lời trả lời này với cả hai người?")) return;
+    setDeletingId(reply.id);
+    setError("");
+    try {
+      await deleteDoc(doc(db, "couples", coupleId, "locketPosts", post.id, "replies", reply.id));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Chưa thể thu hồi lời trả lời.");
+    } finally {
+      setDeletingId("");
+    }
+  }
+
   return (
     <AnimatePresence>
       {post && (
@@ -59,7 +74,7 @@ export function LocketThreadModal({ post, user, coupleId, profile, onClose }: { 
               {post.caption && <p className="mx-auto mt-3 max-w-sm text-center font-handwritten text-xl text-[#6f554d]">“{post.caption}”</p>}
               <div className="mt-6 space-y-3">
                 {replies.length === 0 && <p className="py-5 text-center text-sm text-[#9b857b]">Chưa có lời nhắn nào. Hãy là người đầu tiên trả lời.</p>}
-                {replies.map((reply) => <div className={`flex gap-2 ${reply.senderId === user.uid ? "flex-row-reverse" : ""}`} key={reply.id}>{reply.senderPhotoUrl ? <span className="size-8 shrink-0 overflow-hidden rounded-full">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={reply.senderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blush/45 text-xs font-bold">{reply.senderName.slice(0, 1)}</span>}<div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${reply.senderId === user.uid ? "rounded-tr-sm bg-blush/65" : "rounded-tl-sm bg-white shadow-sm"}`}><p>{reply.text}</p><span className="mt-1 block text-[9px] text-[#8f7b72]">{reply.senderName}</span></div></div>)}
+                {replies.map((reply) => { const mine = reply.senderId === user.uid; return <div className={`group flex items-center gap-2 ${mine ? "flex-row-reverse" : ""}`} key={reply.id}>{reply.senderPhotoUrl ? <span className="size-8 shrink-0 overflow-hidden rounded-full">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={reply.senderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blush/45 text-xs font-bold">{reply.senderName.slice(0, 1)}</span>}<div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-sm bg-blush/65" : "rounded-tl-sm bg-white shadow-sm"}`}><p>{reply.text}</p><span className="mt-1 block text-[9px] text-[#8f7b72]">{reply.senderName}</span></div>{mine && <button className="grid size-8 shrink-0 place-items-center rounded-full text-[#a47c75] opacity-70 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" type="button" disabled={deletingId === reply.id} onClick={() => recallReply(reply)} aria-label="Thu hồi lời trả lời" title="Thu hồi">{deletingId === reply.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}</button>}</div>; })}
               </div>
             </div>
             {error && <p className="mx-4 mb-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}

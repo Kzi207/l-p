@@ -174,7 +174,9 @@ service cloud.firestore {
             && request.resource.data.text is string
             && request.resource.data.text.size() > 0
             && request.resource.data.text.size() <= 500;
-          allow update, delete: if false;
+          allow update: if false;
+          allow delete: if isCoupleMember(coupleId)
+            && resource.data.senderId == request.auth.uid;
         }
       }
 
@@ -187,7 +189,9 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 1000;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isCoupleMember(coupleId)
+          && resource.data.senderId == request.auth.uid;
       }
 
       match /mediaMemories/{mediaId} {

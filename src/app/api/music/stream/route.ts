@@ -25,18 +25,23 @@ export async function GET(request: NextRequest) {
   try {
     const resolver = new URL(`${API_BASE}/${source}`);
     resolver.searchParams.set("download", parsedTrack.toString());
+    resolver.searchParams.set("type", "mp3");
     const resolvedResponse = await fetch(resolver, { cache: "no-store", signal: AbortSignal.timeout(45_000) });
     if (!resolvedResponse.ok) throw new Error("Resolve failed");
-    const resolved = await resolvedResponse.json() as { status?: boolean; download_url?: string };
-    if (!resolved.status || !resolved.download_url) throw new Error("No audio URL");
+    const resolved = await resolvedResponse.json() as { status?: boolean; stream_url?: string; download_url?: string };
+    const playableUrl = resolved.stream_url || resolved.download_url;
+    if (!resolved.status || !playableUrl) throw new Error("No audio URL");
 
-    const audioUrl = new URL(resolved.download_url);
+    const audioUrl = new URL(playableUrl);
     if (audioUrl.hostname !== "khanhduy.id.vn") throw new Error("Unexpected audio host");
+    // API nguồn đã hỗ trợ HTTPS, byte-range và token 15 phút. Redirect để
+    // trình duyệt đọc các range trực tiếp, tránh resolve lại từng đoạn nhạc.
+    if (audioUrl.protocol === "https:") return NextResponse.redirect(audioUrl, 307);
+
     const range = request.headers.get("range");
     const audioResponse = await fetch(audioUrl, {
       cache: "no-store",
       headers: range ? { Range: range } : undefined,
-      signal: AbortSignal.timeout(60_000),
     });
     if (!audioResponse.ok && audioResponse.status !== 206) throw new Error("Audio stream failed");
 

@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
   try {
     const resolver = new URL(`${API_BASE}/${source}`);
     resolver.searchParams.set("download", parsedTrack.toString());
+    resolver.searchParams.set("type", "mp3");
     const resolvedResponse = await fetch(resolver, { cache: "no-store", signal: AbortSignal.timeout(45_000) });
     if (!resolvedResponse.ok) throw new Error("Resolve failed");
     const resolved = await resolvedResponse.json() as { status?: boolean; download_url?: string };
@@ -38,6 +39,10 @@ export async function GET(request: NextRequest) {
 
     const audioUrl = new URL(resolved.download_url);
     if (audioUrl.hostname !== "khanhduy.id.vn") throw new Error("Unexpected audio host");
+    // download_url chứa dl=2 và header attachment. Redirect giúp file lớn
+    // không bị ngắt vì giới hạn thời gian chạy của server Next.js.
+    if (audioUrl.protocol === "https:") return NextResponse.redirect(audioUrl, 307);
+
     const audioResponse = await fetch(audioUrl, { cache: "no-store" });
     if (!audioResponse.ok) throw new Error("Download failed");
 
