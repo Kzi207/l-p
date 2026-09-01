@@ -82,3 +82,16 @@ export interface MediaMemoryDocument {
   uploaderId: string;
   uploaderName: string;
 }
+
+export interface MusicFavoriteDocument {
+  trackId: string;
+  source: "youtube" | "soundcloud";
+  title: string;
+  artist: string;
+  duration: string;
+  thumbnail: string;
+  url: string;
+  addedBy: string;
+  addedByName: string;
+  createdAt: Timestamp;
+}

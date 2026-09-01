@@ -206,6 +206,33 @@ service cloud.firestore {
           && request.resource.data.caption.size() <= 300;
         allow delete: if isCoupleMember(coupleId) && resource.data.uploaderId == request.auth.uid;
       }
+
+      match /musicFavorites/{favoriteId} {
+        allow read: if isCoupleMember(coupleId);
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly(['trackId', 'source', 'title', 'artist', 'duration', 'thumbnail', 'url', 'addedBy', 'addedByName', 'createdAt'])
+          && request.resource.data.trackId is string
+          && request.resource.data.trackId.size() > 0
+          && request.resource.data.trackId.size() <= 200
+          && request.resource.data.source in ['youtube', 'soundcloud']
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 500
+          && request.resource.data.artist is string
+          && request.resource.data.artist.size() <= 200
+          && request.resource.data.duration is string
+          && request.resource.data.duration.size() <= 20
+          && request.resource.data.thumbnail is string
+          && request.resource.data.thumbnail.size() <= 2000
+          && request.resource.data.url is string
+          && request.resource.data.url.size() <= 2000
+          && request.resource.data.addedBy == request.auth.uid
+          && request.resource.data.addedByName is string
+          && request.resource.data.addedByName.size() <= 100
+          && request.resource.data.createdAt == request.time;
+        allow delete: if isCoupleMember(coupleId);
+        allow update: if false;
+      }
     }
 
     // Dữ liệu cũ được giữ lại nhưng không còn mở cho client sau khi chuyển sang không gian riêng theo cặp.
