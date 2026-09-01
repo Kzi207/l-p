@@ -34,13 +34,30 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  useEffect(() => () => {
-    document.body.classList.remove("locket-keyboard-open");
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const root = document.documentElement;
+    function syncVisibleViewport() {
+      root.style.setProperty("--chat-viewport-height", `${viewport?.height || window.innerHeight}px`);
+      root.style.setProperty("--chat-viewport-top", `${viewport?.offsetTop || 0}px`);
+    }
+    syncVisibleViewport();
+    viewport?.addEventListener("resize", syncVisibleViewport);
+    viewport?.addEventListener("scroll", syncVisibleViewport);
+    window.addEventListener("orientationchange", syncVisibleViewport);
+    return () => {
+      document.body.classList.remove("locket-keyboard-open");
+      root.style.removeProperty("--chat-viewport-height");
+      root.style.removeProperty("--chat-viewport-top");
+      viewport?.removeEventListener("resize", syncVisibleViewport);
+      viewport?.removeEventListener("scroll", syncVisibleViewport);
+      window.removeEventListener("orientationchange", syncVisibleViewport);
+    };
   }, []);
 
   function openKeyboardLayout() {
     document.body.classList.add("locket-keyboard-open");
-    window.setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 120);
+    window.setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 180);
   }
 
   function closeKeyboardLayout() {
@@ -88,9 +105,9 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
   }
 
   return (
-    <section className="locket-chat soft-card flex min-h-[65dvh] flex-col overflow-hidden">
+    <section className="locket-chat soft-card flex h-[calc(100dvh-14rem)] min-h-[28rem] max-h-[44rem] flex-col overflow-hidden sm:h-[65dvh]">
       <header className="locket-chat-header border-b border-[#eadbd0] px-5 py-4"><p className="flex items-center gap-2 font-display text-xl font-bold"><MessageCircleHeart className="size-5 text-[#cf7485]" />Chat của chúng mình</p><p className="mt-1 text-xs text-[#927d73]">Tin nhắn cập nhật ngay trên cả hai thiết bị</p></header>
-      <div className="locket-chat-messages flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+      <div className="locket-chat-messages min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
         {messages.length === 0 && <div className="grid min-h-72 place-items-center text-center"><div><MessageCircleHeart className="mx-auto size-12 text-blush" /><p className="mt-3 font-handwritten text-xl text-[#a56f78]">Gửi lời nhắn đầu tiên nhé</p></div></div>}
         {messages.map((message) => {
           const mine = message.senderId === user.uid;
