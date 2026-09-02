@@ -9,18 +9,36 @@ function requiredEnvironment(name: string) {
   return value;
 }
 
-/** Khởi tạo Admin SDK đúng một lần trong mỗi Vercel Serverless instance. */
+interface RenderServiceAccount {
+  project_id?: string;
+  client_email?: string;
+  private_key?: string;
+}
+
+function decodeServiceAccount() {
+  try {
+    const encoded = requiredEnvironment("FIREBASE_ADMIN_SA_BASE64").trim();
+    const account = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as RenderServiceAccount;
+    if (!account.project_id || !account.client_email || !account.private_key) throw new Error("Service Account thiếu trường bắt buộc.");
+    return {
+      projectId: account.project_id,
+      clientEmail: account.client_email,
+      privateKey: account.private_key,
+    };
+  } catch (caught) {
+    if (caught instanceof Error && caught.message.startsWith("Thiếu biến")) throw caught;
+    throw new Error("FIREBASE_ADMIN_SA_BASE64 không phải Service Account JSON base64 hợp lệ.");
+  }
+}
+
+/** Khởi tạo Admin SDK đúng một lần trong tiến trình Next.js chạy trên Render. */
 export function getFirebaseAdminApp(): App {
   const existing = getApps()[0];
   if (existing) return existing;
 
   return initializeApp({
-    credential: cert({
-      projectId: requiredEnvironment("FIREBASE_ADMIN_PROJECT_ID"),
-      clientEmail: requiredEnvironment("FIREBASE_ADMIN_CLIENT_EMAIL"),
-      // Vercel lưu xuống dòng dưới dạng chuỗi \\n, cần đổi lại trước khi tạo credential.
-      privateKey: requiredEnvironment("FIREBASE_ADMIN_PRIVATE_KEY").replace(/\\n/g, "\n"),
-    }),
+    // Encode cả JSON giúp private_key giữ nguyên xuống dòng khi nhập Environment trên Render.
+    credential: cert(decodeServiceAccount()),
   });
 }
 

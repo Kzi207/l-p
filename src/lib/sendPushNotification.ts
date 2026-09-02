@@ -10,8 +10,7 @@ export interface PushResult {
 
 function absoluteRoute(route: string) {
   const configured = process.env.APP_URL;
-  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
-  const origin = configured || (vercelHost ? `https://${vercelHost}` : "http://localhost:3000");
+  const origin = configured || process.env.RENDER_EXTERNAL_URL || "http://localhost:3000";
   return new URL(route, origin).toString();
 }
 

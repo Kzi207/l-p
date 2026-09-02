@@ -10,8 +10,13 @@ jobs:
   notify-timecapsules:
     runs-on: ubuntu-latest
     steps:
-      - name: Gọi Vercel API kiểm tra Hộp thư
+      - name: Đánh thức Render Free
         run: |
-          curl --fail-with-body --retry 2 --request POST \
+          curl --location --max-time 65 "${{ secrets.RENDER_APP_URL }}/api/health" || true
+          sleep 50
+
+      - name: Gọi API kiểm tra Hộp thư
+        run: |
+          curl --fail-with-body --retry 3 --retry-all-errors --retry-delay 10 --max-time 90 --request POST \
             --header "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            "https://love.khanhduy.id.vn/api/notify/timecapsule-check"
+            "${{ secrets.RENDER_APP_URL }}/api/notify/timecapsule-check"

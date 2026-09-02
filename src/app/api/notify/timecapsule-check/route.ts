@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   try {
     const database = getAdminFirestore();
     const now = new Date();
-    // Workflow chạy theo giờ Việt Nam; tạo biên ngày bằng offset +07:00 để không lệch ngày trên Vercel UTC.
+    // Workflow chạy theo giờ Việt Nam; tạo biên ngày bằng offset +07:00 để không lệch ngày trên Render UTC.
     const vietnamDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
     const start = new Date(`${vietnamDate}T00:00:00+07:00`);
     const end = new Date(`${vietnamDate}T23:59:59.999+07:00`);

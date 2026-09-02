@@ -40,12 +40,16 @@ async function send(user: User, item: PendingNotification) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const token = await user.getIdToken(attempt > 0);
+      const controller = new AbortController();
+      // Render Free có thể cần gần một phút để khởi động lại sau khi ngủ.
+      const timeout = window.setTimeout(() => controller.abort(), 65_000);
       const response = await fetch(item.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(item.body),
         keepalive: true,
-      });
+        signal: controller.signal,
+      }).finally(() => window.clearTimeout(timeout));
       if (response.ok) return;
       lastError = new Error(`Notify API trả về ${response.status}.`);
     } catch (caught) {

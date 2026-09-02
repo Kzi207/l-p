@@ -13,7 +13,7 @@ Web app mobile-first dành cho hai người: đăng nhập riêng tư, đếm ng
 - Chọn ảnh từ thư viện hoặc mở camera sau trên mobile, nén client-side và upload unsigned lên Cloudinary.
 - Ảnh chung trên trang chủ có thể được một trong hai người thay đổi bất cứ lúc nào.
 - Nút camera Locket nằm giữa thanh điều hướng để mở nhanh khu ảnh, reaction, reply và chat realtime.
-- Đăng ký FCM token trên trình duyệt và Vercel API Routes gửi thông báo cho người còn lại, không cần Firebase Blaze.
+- Đăng ký FCM token trên trình duyệt và Next.js API Routes trên Render gửi thông báo cho người còn lại, không cần Firebase Blaze.
 
 ## 1. Chạy project lần đầu
 
@@ -27,7 +27,7 @@ npm run dev
 
 Mở `http://localhost:3000`. Khi chưa điền biến môi trường, app sẽ hiện màn hình hướng dẫn cấu hình thay vì crash.
 
-> PWA service worker được tắt ở môi trường development để tránh cache code cũ. Test PWA bằng `npm run build && npm run start` hoặc trên URL Vercel HTTPS.
+> PWA service worker được tắt ở môi trường development để tránh cache code cũ. Test PWA bằng `npm run build && npm run start` hoặc trên URL Render HTTPS.
 
 ## 2. Setup Firebase từ đầu
 
@@ -35,7 +35,7 @@ Mở `http://localhost:3000`. Khi chưa điền biến môi trường, app sẽ 
 
 1. Vào [Firebase Console](https://console.firebase.google.com), chọn **Add project** và đặt tên tùy ý.
 2. Trong **Project settings → General → Your apps**, chọn biểu tượng Web `</>`.
-3. Đăng ký app; không cần bật Firebase Hosting vì frontend sẽ ở Vercel.
+3. Đăng ký app; không cần bật Firebase Hosting vì frontend sẽ ở Render.
 4. Sao chép từng giá trị trong `firebaseConfig` vào `.env.local`:
 
 ```env
@@ -61,7 +61,7 @@ Google Authentication cho phép mọi tài khoản Google xác thực danh tính
 ### 2.3 Tạo Firestore
 
 1. Vào **Build → Firestore Database → Create database**.
-2. Chọn region gần hai bạn; nếu sẽ deploy Cloud Function hiện tại, chọn `asia-southeast1` để đồng vùng.
+2. Chọn region gần hai bạn để giảm độ trễ khi đọc và ghi dữ liệu.
 3. Cài Firebase CLI và deploy rules từ thư mục gốc:
 
 ```bash
@@ -100,68 +100,95 @@ NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
 
 Unsigned preset và cloud name là dữ liệu phía client, không đặt API secret Cloudinary trong `.env.local`. Client nén ảnh về tối đa khoảng 1 MB trước khi upload.
 
-## 4. Web Push bằng Vercel API Routes — không cần Firebase Blaze
+## 4. Web Push bằng Next.js API Routes trên Render
 
-Bốn route `/api/notify/photo`, `/api/notify/locket`, `/api/notify/memory` và `/api/notify/chat` thay cho bốn Firestore trigger cũ. Client gọi route tương ứng ngay sau khi ghi Firestore thành công. Server bắt buộc xác thực Firebase ID token, kiểm tra UID người gửi, couple và document vừa tạo trước khi gửi FCM cho người còn lại.
+Bốn route `/api/notify/photo`, `/api/notify/locket`, `/api/notify/memory` và `/api/notify/chat` thay cho Firestore trigger cũ. Client gọi route sau khi ghi Firestore thành công. Server xác thực Firebase ID token, UID, cặp đôi và document vừa tạo trước khi gửi FCM cho người còn lại.
 
-### 4.1 Lấy Firebase Service Account
+### 4.1 Lấy và encode Firebase Service Account
 
 1. Vào **Firebase Console → Project settings → Service accounts**.
-2. Chọn **Generate new private key** và xác nhận để tải file JSON.
-3. Không đổi tên file thành tên chung như `config.json`, không đặt trong `public/` và tuyệt đối không commit lên Git. `.gitignore` đã chặn `service-account*.json` và `firebase-admin-key*.json`.
-4. Mở JSON, lấy ba giá trị `project_id`, `client_email`, `private_key` để tạo biến môi trường. Admin SDK server-side không phải Cloud Functions nên bước này không yêu cầu nâng gói Blaze.
+2. Chọn **Generate new private key** để tải file JSON. Admin SDK chạy trên Render không phải Cloud Functions nên không yêu cầu Firebase Blaze.
+3. Không đặt JSON trong `public/` và không commit lên Git. `.gitignore` đã chặn các tên `service-account*.json` và `firebase-admin-key*.json`.
+4. Encode toàn bộ file JSON thành một chuỗi base64, tránh lỗi xuống dòng của `private_key` trên Render.
 
-### 4.2 Biến môi trường mới trên Vercel
+macOS/Linux:
 
-Vào **Vercel → Project → Settings → Environment Variables**, thêm cho Production (và Preview nếu cần):
-
-```env
-FIREBASE_ADMIN_PROJECT_ID=khanhduyyyy-bee16
-FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-...@khanhduyyyy-bee16.iam.gserviceaccount.com
-FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-APP_URL=https://love.khanhduy.id.vn
-CRON_SECRET=mot-chuoi-ngau-nhien-dai-va-kho-doan
+```bash
+base64 -i serviceAccountKey.json | tr -d '\n' > encoded.txt
 ```
 
-Giữ nguyên ký tự `\n` trong `FIREBASE_ADMIN_PRIVATE_KEY`; code sẽ đổi chúng thành xuống dòng thật khi khởi tạo Admin SDK. Không thêm tiền tố `NEXT_PUBLIC_` cho bất kỳ biến nào ở trên. Sau khi lưu biến, redeploy project Vercel.
+Windows PowerShell:
 
-### 4.3 Retry và hàng đợi thông báo
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("serviceAccountKey.json")) | Set-Clipboard
+```
 
-Request thông báo chạy nền nên không làm chậm upload hoặc gửi tin nhắn. Nếu request thất bại, client thử lại thêm 2 lần, mỗi lần cách 2 giây. Nếu vẫn lỗi, request được giữ trong `localStorage` và tự thử lại khi app mở lần sau hoặc thiết bị có mạng trở lại.
+Copy toàn bộ chuỗi base64 vào biến `FIREBASE_ADMIN_SA_BASE64`. Sau khi cấu hình xong, xóa file JSON và `encoded.txt` khỏi máy nếu không còn cần dùng.
 
-Đánh đổi cần biết: Firestore trigger trên Cloud Functions đáng tin cậy hơn vì không phụ thuộc client. Cách Vercel vẫn có xác suất nhỏ bỏ lỡ thông báo nếu người dùng đóng app ngay sau khi ghi dữ liệu, trước khi request hoặc hàng đợi kịp được lưu. Với app hai người dùng thường xuyên, retry và hàng đợi giúp rủi ro này ở mức chấp nhận được.
+### 4.2 Retry, timeout và độ tin cậy
 
-Thư mục `functions/` cũ chỉ còn để tham khảo. `firebase.json` đã bỏ cấu hình Functions nên quy trình hiện tại không deploy các function cũ nữa. Nếu trước đây đã deploy chúng, xóa một lần để tránh nhận thông báo trùng:
+Request notify chạy nền, timeout sau 65 giây, thử lại thêm 2 lần cách nhau 2 giây. Nếu vẫn lỗi, request được giữ trong `localStorage` và tự gửi lại khi app mở hoặc có mạng trở lại. Delivery receipt phía server ngăn retry tạo thông báo trùng.
+
+Render Free có thể ngủ khi không có traffic, vì vậy request đầu tiên đôi lúc phản hồi chậm. Cloud Functions đáng tin cậy hơn vì trigger không phụ thuộc client hoặc trạng thái server; cách Render đã giảm rủi ro bằng timeout dài, retry, hàng đợi và bước đánh thức cron nhưng vẫn có xác suất nhỏ thông báo đến trễ hoặc bị bỏ lỡ nếu app bị đóng quá sớm.
+
+Thư mục `functions/` chỉ còn để tham khảo và `firebase.json` không còn deploy Functions. Nếu Functions cũ từng được deploy, xóa một lần để tránh thông báo trùng:
 
 ```bash
 npx firebase-tools functions:delete notifyPartnerAboutPhoto notifyPartnerAboutMessage notifyPartnerAboutLocket notifyPartnerAboutMemory --region asia-southeast1
 ```
 
-### 4.4 Cron cho thư tới ngày mở
+### 4.3 Cron thư tới ngày mở
 
-Route `/api/notify/timecapsule-check` được bảo vệ bằng header `x-cron-secret`. Workflow `.github/workflows/timecapsule-cron.yml` gọi route lúc **01:00 UTC / 08:00 Việt Nam** mỗi ngày.
+Workflow `.github/workflows/timecapsule-cron.yml` chạy lúc **01:00 UTC / 08:00 Việt Nam**. Workflow gọi `/api/health` để đánh thức Render, chờ 50 giây rồi mới gọi `/api/notify/timecapsule-check` với retry.
 
-1. Vào GitHub repository → **Settings → Secrets and variables → Actions**.
-2. Tạo Repository secret tên `CRON_SECRET`, giá trị phải giống hệt biến trên Vercel.
-3. Vào tab **Actions → Kiểm tra thư tới ngày mở → Run workflow** để test thủ công bằng trigger `workflow_dispatch`.
-4. Kết quả thành công trả JSON gồm ngày kiểm tra, số thư phù hợp và số notification đã gửi.
+Trong GitHub repository → **Settings → Secrets and variables → Actions**, tạo:
 
-Deploy index collection-group cho trường `timeCapsules.openDate` cùng Firestore Rules:
+- `RENDER_APP_URL`: URL không có dấu `/` cuối, ví dụ `https://love-days.onrender.com`.
+- `CRON_SECRET`: chuỗi dài, ngẫu nhiên và giống hệt biến `CRON_SECRET` trên Render.
+
+Vào **Actions → Kiểm tra thư tới ngày mở → Run workflow** để chạy thử thủ công bằng `workflow_dispatch`. Deploy index trước khi dùng cron:
 
 ```bash
 npx firebase-tools deploy --only firestore:rules,firestore:indexes
 ```
 
-Nếu đổi domain production, cập nhật cả `APP_URL` trên Vercel và URL trong `.github/workflows/timecapsule-cron.yml`.
+### 4.4 Giữ Render thức bằng UptimeRobot (tùy chọn)
 
-## 5. Deploy frontend lên Vercel
+1. Tạo tài khoản UptimeRobot và chọn **Add New Monitor**.
+2. Chọn monitor HTTP(S), đặt URL là `https://<service>.onrender.com/api/health`.
+3. Chọn khoảng kiểm tra khoảng 10 phút nếu gói hiện tại cho phép, rồi lưu monitor.
+4. Kiểm tra lịch sử để chắc chắn route trả HTTP 200 và `{ "status": "ok" }`.
 
-1. Đẩy repository lên GitHub/GitLab/Bitbucket riêng tư.
-2. Vào [Vercel Dashboard](https://vercel.com/new), chọn **Add New → Project** và import repository.
-3. Vercel tự nhận Framework Preset là **Next.js**. Giữ Build Command `npm run build` và Output mặc định.
-4. Trong **Settings → Environment Variables**, thêm đủ toàn bộ biến trong `.env.local.example` cho Production, Preview và Development theo nhu cầu.
-5. Chọn **Deploy**. Sau khi có domain chính thức, cập nhật biến `APP_URL` trên Vercel và redeploy nếu URL đã thay đổi.
-6. Trong Firebase Authentication, thêm domain Vercel vào **Settings → Authorized domains** nếu chưa có.
+Cách này giảm cold start nhưng phụ thuộc chính sách gói miễn phí của Render và UptimeRobot; nếu dịch vụ vẫn ngủ, timeout và hàng đợi client vẫn là lớp dự phòng.
+
+## 5. Deploy Next.js lên Render
+
+`next.config.mjs` đang dùng SSR mặc định và không có `output: "export"`, vì vậy sáu API Routes hoạt động bình thường.
+
+1. Đẩy repository lên GitHub và vào Render Dashboard → **New → Web Service**.
+2. Kết nối repository, chọn **Environment: Node** và gói **Free**.
+3. Đặt **Build Command**: `npm install && npm run build`.
+4. Đặt **Start Command**: `npm run start`. Script đã dùng `next start -p $PORT` để lắng nghe đúng cổng Render cấp.
+5. Trong **Environment**, thêm đầy đủ:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_VAPID_KEY=
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
+FIREBASE_ADMIN_SA_BASE64=
+APP_URL=https://your-service.onrender.com
+CRON_SECRET=
+```
+
+6. Deploy, sau đó mở `https://your-service.onrender.com/api/health`; kết quả đúng là `{ "status": "ok" }`.
+7. Thêm domain Render hoặc custom domain vào **Firebase Authentication → Settings → Authorized domains**.
+8. Nếu đổi domain, cập nhật `APP_URL` trên Render và `RENDER_APP_URL` trong GitHub Secrets.
 
 Trên iOS dùng Safari **Share → Add to Home Screen**. Trên Android/Chrome chọn **Install app** khi trình duyệt hiện lời mời.
 
