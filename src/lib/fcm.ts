@@ -45,15 +45,11 @@ export async function getFCMToken(): Promise<string> {
     navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }),
     "Service Worker phản hồi quá lâu. Hãy tải lại ứng dụng rồi thử lại.",
   );
-  const readyRegistration = registration.active
-    ? registration
-    : await withTimeout(
-      navigator.serviceWorker.ready,
-      "Service Worker chưa kích hoạt. Hãy đóng hẳn ứng dụng, mở lại rồi bật thông báo.",
-    );
+  // Không chờ navigator.serviceWorker.ready: trên một số PWA điện thoại promise
+  // này có thể treo dù PushManager của registration đã sử dụng được.
   const token = await withTimeout(getToken(getMessaging(firebaseApp), {
     vapidKey,
-    serviceWorkerRegistration: readyRegistration,
+    serviceWorkerRegistration: registration,
   }), "Firebase không trả FCM token. Hãy kiểm tra VAPID key và kết nối mạng.", 20_000);
 
   if (!token) throw new Error("Firebase không trả về FCM token.");

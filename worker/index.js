@@ -1,30 +1,27 @@
 /* global self, clients */
 
-import { initializeApp } from "firebase/app";
-import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
-
-const firebaseApp = initializeApp({
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-});
-
-const messaging = getMessaging(firebaseApp);
-
-onBackgroundMessage(messaging, (payload) => {
-  const title = payload.data?.title || payload.notification?.title || "Love Days 💌";
+// Đọc trực tiếp Web Push để một lỗi khởi tạo Firebase không thể làm hỏng
+// toàn bộ Service Worker của PWA trên iOS/Android.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data?.json() || {};
+  } catch {
+    payload = { notification: { body: event.data?.text() || "" } };
+  }
+  const message = payload.FCM_MSG || payload;
+  const data = message.data || {};
+  const notification = message.notification || {};
+  const title = data.title || notification.title || "Love Days 💌";
   const options = {
-    body: payload.data?.body || payload.notification?.body || "Bạn có một điều mới từ người thương.",
+    body: data.body || notification.body || "Bạn có một điều mới từ người thương.",
     icon: "/icon.svg",
     badge: "/icon.svg",
-    tag: `${payload.data?.type || "love-days"}-${payload.data?.itemId || "new"}`,
+    tag: `${data.type || "love-days"}-${data.itemId || "new"}`,
     renotify: true,
-    data: { url: payload.data?.url || payload.data?.route || "/" },
+    data: { url: data.url || data.route || message.fcmOptions?.link || "/" },
   };
-  return self.registration.showNotification(title, options);
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
