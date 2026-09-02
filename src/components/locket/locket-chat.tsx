@@ -56,6 +56,8 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
   }, []);
 
   function openKeyboardLayout() {
+    const mobileTouchDevice = window.matchMedia("(max-width: 1023px) and (pointer: coarse)").matches;
+    if (!mobileTouchDevice) return;
     document.body.classList.add("locket-keyboard-open");
     window.setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 180);
   }
