@@ -5,18 +5,23 @@ import imageCompression from "browser-image-compression";
 import { AnimatePresence, motion } from "framer-motion";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import type { User } from "firebase/auth";
-import { Camera, Images, LoaderCircle, Send, X } from "lucide-react";
+import { Camera, Crop, Images, LoaderCircle, RotateCcw, Send, X } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase";
-import { cropImageToSquare } from "@/lib/image";
+import { cropImageToSquare, type SquareCrop } from "@/lib/image";
 import type { UserDocument } from "@/types/firestore";
 
 export function LocketUploadModal({ open, user, coupleId, profile, initialFiles = [], onClose }: { open: boolean; user: User; coupleId: string; profile: UserDocument | null; initialFiles?: File[]; onClose: () => void }) {
   const galleryInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  const cropFrame = useRef<HTMLDivElement>(null);
+  const dragState = useRef<{ pointerId: number; clientX: number; clientY: number; crop: SquareCrop } | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [dimensions, setDimensions] = useState<Array<{ width: number; height: number }>>([]);
+  const [crops, setCrops] = useState<SquareCrop[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
@@ -27,23 +32,70 @@ export function LocketUploadModal({ open, user, coupleId, profile, initialFiles 
   useEffect(() => {
     if (!open || initialFiles.length === 0) return;
     const selected = initialFiles.slice(0, 6);
-    setFiles(selected);
-    setPreviews(selected.map((file) => URL.createObjectURL(file)));
-    setError("");
+    void selectFiles(selected);
   }, [initialFiles, open]);
 
   function chooseFiles(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/")).slice(0, 6);
+    event.target.value = "";
     if (selected.length === 0) return;
+    void selectFiles(selected);
+  }
+
+  async function selectFiles(selected: File[]) {
+    const urls = selected.map((file) => URL.createObjectURL(file));
+    const sizes = await Promise.all(urls.map((url) => new Promise<{ width: number; height: number }>((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+      image.onerror = () => resolve({ width: 1, height: 1 });
+      image.src = url;
+    })));
     setFiles(selected);
-    setPreviews(selected.map((file) => URL.createObjectURL(file)));
+    setPreviews(urls);
+    setDimensions(sizes);
+    setCrops(selected.map(() => ({ zoom: 1, x: 0.5, y: 0.5 })));
+    setActiveIndex(0);
     setError("");
+  }
+
+  function updateCrop(values: Partial<SquareCrop>) {
+    setCrops((current) => current.map((crop, index) => index === activeIndex ? { ...crop, ...values } : crop));
+  }
+
+  function startDragging(event: React.PointerEvent<HTMLDivElement>) {
+    const crop = crops[activeIndex];
+    if (!crop) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragState.current = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, crop };
+  }
+
+  function dragImage(event: React.PointerEvent<HTMLDivElement>) {
+    const start = dragState.current;
+    const frame = cropFrame.current;
+    const size = dimensions[activeIndex];
+    if (!start || start.pointerId !== event.pointerId || !frame || !size) return;
+    const frameSize = frame.clientWidth;
+    const landscape = size.width >= size.height;
+    const renderedWidth = landscape ? frameSize * start.crop.zoom * size.width / size.height : frameSize * start.crop.zoom;
+    const renderedHeight = landscape ? frameSize * start.crop.zoom : frameSize * start.crop.zoom * size.height / size.width;
+    const overflowX = renderedWidth - frameSize;
+    const overflowY = renderedHeight - frameSize;
+    const x = overflowX > 0 ? Math.min(1, Math.max(0, start.crop.x - (event.clientX - start.clientX) / overflowX)) : 0.5;
+    const y = overflowY > 0 ? Math.min(1, Math.max(0, start.crop.y - (event.clientY - start.clientY) / overflowY)) : 0.5;
+    updateCrop({ x, y });
+  }
+
+  function stopDragging(event: React.PointerEvent<HTMLDivElement>) {
+    if (dragState.current?.pointerId === event.pointerId) dragState.current = null;
   }
 
   function close(force = false) {
     if (busy && !force) return;
     setFiles([]);
     setPreviews([]);
+    setDimensions([]);
+    setCrops([]);
+    setActiveIndex(0);
     setCaption("");
     setProgress("");
     setError("");
@@ -62,7 +114,7 @@ export function LocketUploadModal({ open, user, coupleId, profile, initialFiles 
     try {
       for (let index = 0; index < files.length; index += 1) {
         setProgress(`Đang xử lý ảnh ${index + 1}/${files.length}...`);
-        const square = await cropImageToSquare(files[index], 1600);
+        const square = await cropImageToSquare(files[index], 1600, crops[index]);
         const compressed = await imageCompression(square, { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true, fileType: "image/jpeg" });
         const upload = await uploadToCloudinary(compressed, "love-days/locket-feed");
         await addDoc(collection(db, "couples", coupleId, "locketPosts"), {
@@ -93,8 +145,40 @@ export function LocketUploadModal({ open, user, coupleId, profile, initialFiles 
             <div className="flex items-center justify-between"><div><p className="font-handwritten text-xl text-[#a56f78]">Gửi ngay lúc này</p><h2 id="locket-upload-title" className="font-display text-2xl font-bold">Locket mới</h2></div><button className="grid size-10 place-items-center rounded-full bg-white/70 shadow-soft" type="button" onClick={() => close()} aria-label="Đóng"><X className="size-5" /></button></div>
 
             {previews.length > 0 ? (
-              <div className={`mt-5 grid gap-2 ${previews.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-                {previews.map((preview, index) => <div className="aspect-square overflow-hidden rounded-[1.4rem] bg-[#eadbd0]" key={preview}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={preview} alt={`Ảnh đã chọn ${index + 1}`} className="size-full object-cover" /></div>)}
+              <div className="mt-5">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2 text-sm font-bold text-[#8f626a]"><Crop className="size-4" />Cắt ảnh {activeIndex + 1}/{previews.length}</span>
+                  <button className="inline-flex items-center gap-1.5 rounded-full bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#8a746b] shadow-sm" type="button" onClick={() => updateCrop({ zoom: 1, x: 0.5, y: 0.5 })}><RotateCcw className="size-3.5" />Đặt lại</button>
+                </div>
+                <div
+                  ref={cropFrame}
+                  className="relative mx-auto aspect-square w-full max-w-[26rem] cursor-grab touch-none select-none overflow-hidden rounded-[1.7rem] bg-[#eadbd0] bg-no-repeat shadow-[inset_0_0_0_1px_rgba(255,255,255,.75)] active:cursor-grabbing"
+                  style={{
+                    backgroundImage: `url(${previews[activeIndex]})`,
+                    backgroundPosition: `${(crops[activeIndex]?.x ?? 0.5) * 100}% ${(crops[activeIndex]?.y ?? 0.5) * 100}%`,
+                    backgroundSize: (dimensions[activeIndex]?.width ?? 1) >= (dimensions[activeIndex]?.height ?? 1)
+                      ? `auto ${(crops[activeIndex]?.zoom ?? 1) * 100}%`
+                      : `${(crops[activeIndex]?.zoom ?? 1) * 100}% auto`,
+                  }}
+                  role="img"
+                  aria-label={`Khung cắt ảnh ${activeIndex + 1}`}
+                  onPointerDown={startDragging}
+                  onPointerMove={dragImage}
+                  onPointerUp={stopDragging}
+                  onPointerCancel={stopDragging}
+                >
+                  <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-45" aria-hidden="true">
+                    {Array.from({ length: 9 }).map((_, index) => <span className="border-[0.5px] border-white/80" key={index} />)}
+                  </div>
+                  <span className="pointer-events-none absolute inset-2 rounded-[1.3rem] border border-white/70" />
+                </div>
+                <div className="mt-4 space-y-3 rounded-[1.4rem] bg-white/55 p-4">
+                  <label className="grid grid-cols-[4.5rem_1fr] items-center gap-3 text-xs font-bold text-[#806d65]">Phóng to<input className="accent-[#d96578]" type="range" min="1" max="3" step="0.01" value={crops[activeIndex]?.zoom ?? 1} onChange={(event) => updateCrop({ zoom: Number(event.target.value) })} /></label>
+                  <label className="grid grid-cols-[4.5rem_1fr] items-center gap-3 text-xs font-bold text-[#806d65]">Ngang<input className="accent-[#d96578]" type="range" min="0" max="1" step="0.005" value={crops[activeIndex]?.x ?? 0.5} onChange={(event) => updateCrop({ x: Number(event.target.value) })} /></label>
+                  <label className="grid grid-cols-[4.5rem_1fr] items-center gap-3 text-xs font-bold text-[#806d65]">Dọc<input className="accent-[#d96578]" type="range" min="0" max="1" step="0.005" value={crops[activeIndex]?.y ?? 0.5} onChange={(event) => updateCrop({ y: Number(event.target.value) })} /></label>
+                </div>
+                {previews.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{previews.map((preview, index) => <button className={`relative size-16 shrink-0 overflow-hidden rounded-2xl border-2 bg-[#eadbd0] transition ${activeIndex === index ? "border-[#d96578] shadow-soft" : "border-transparent opacity-70"}`} type="button" key={preview} onClick={() => setActiveIndex(index)} aria-label={`Chỉnh ảnh ${index + 1}`}><img src={preview} alt="" className="size-full object-cover" /><span className="absolute bottom-1 right-1 grid size-5 place-items-center rounded-full bg-black/55 text-[10px] font-bold text-white">{index + 1}</span></button>)}</div>}
+                <p className="mt-3 text-center text-xs leading-5 text-[#998078]">Kéo ảnh hoặc dùng các thanh chỉnh để giữ phần đẹp nhất trong khung vuông.</p>
               </div>
             ) : (
               <div className="mt-5 grid grid-cols-2 gap-3">

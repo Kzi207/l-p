@@ -1,8 +1,21 @@
-export async function cropImageToSquare(file: File, maximumSize = 1600): Promise<File> {
+export interface SquareCrop {
+  zoom: number;
+  x: number;
+  y: number;
+}
+
+const DEFAULT_CROP: SquareCrop = { zoom: 1, x: 0.5, y: 0.5 };
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+export async function cropImageToSquare(file: File, maximumSize = 1600, crop: SquareCrop = DEFAULT_CROP): Promise<File> {
   const bitmap = await createImageBitmap(file);
-  const sourceSize = Math.min(bitmap.width, bitmap.height);
-  const sourceX = (bitmap.width - sourceSize) / 2;
-  const sourceY = (bitmap.height - sourceSize) / 2;
+  const zoom = clamp(crop.zoom, 1, 3);
+  const sourceSize = Math.min(bitmap.width, bitmap.height) / zoom;
+  const sourceX = (bitmap.width - sourceSize) * clamp(crop.x, 0, 1);
+  const sourceY = (bitmap.height - sourceSize) * clamp(crop.y, 0, 1);
   const outputSize = Math.min(sourceSize, maximumSize);
   const canvas = document.createElement("canvas");
   canvas.width = outputSize;
