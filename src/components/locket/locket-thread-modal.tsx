@@ -7,6 +7,7 @@ import type { User } from "firebase/auth";
 import { LoaderCircle, Send, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import type { LocketPostDocument, LocketReplyDocument, UserDocument } from "@/types/firestore";
 
 type Post = LocketPostDocument & { id: string };
@@ -17,6 +18,7 @@ export function LocketThreadModal({ post, user, coupleId, profile, onClose }: { 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState("");
+  const [pendingRecall, setPendingRecall] = useState<Reply | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -49,17 +51,17 @@ export function LocketThreadModal({ post, user, coupleId, profile, onClose }: { 
     }
   }
 
-  async function recallReply(reply: Reply) {
-    if (!db || !post || reply.senderId !== user.uid) return;
-    if (!window.confirm("Thu hồi lời trả lời này với cả hai người?")) return;
-    setDeletingId(reply.id);
+  async function recallReply() {
+    if (!db || !post || !pendingRecall || pendingRecall.senderId !== user.uid) return;
+    setDeletingId(pendingRecall.id);
     setError("");
     try {
-      await deleteDoc(doc(db, "couples", coupleId, "locketPosts", post.id, "replies", reply.id));
+      await deleteDoc(doc(db, "couples", coupleId, "locketPosts", post.id, "replies", pendingRecall.id));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Chưa thể thu hồi lời trả lời.");
     } finally {
       setDeletingId("");
+      setPendingRecall(null);
     }
   }
 
@@ -74,11 +76,12 @@ export function LocketThreadModal({ post, user, coupleId, profile, onClose }: { 
               {post.caption && <p className="mx-auto mt-3 max-w-sm text-center font-handwritten text-xl text-[#6f554d]">“{post.caption}”</p>}
               <div className="mt-6 space-y-3">
                 {replies.length === 0 && <p className="py-5 text-center text-sm text-[#9b857b]">Chưa có lời nhắn nào. Hãy là người đầu tiên trả lời.</p>}
-                {replies.map((reply) => { const mine = reply.senderId === user.uid; return <div className={`group flex items-center gap-2 ${mine ? "flex-row-reverse" : ""}`} key={reply.id}>{reply.senderPhotoUrl ? <span className="size-8 shrink-0 overflow-hidden rounded-full">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={reply.senderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blush/45 text-xs font-bold">{reply.senderName.slice(0, 1)}</span>}<div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-sm bg-blush/65" : "rounded-tl-sm bg-white shadow-sm"}`}><p>{reply.text}</p><span className="mt-1 block text-[9px] text-[#8f7b72]">{reply.senderName}</span></div>{mine && <button className="grid size-8 shrink-0 place-items-center rounded-full text-[#a47c75] opacity-70 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" type="button" disabled={deletingId === reply.id} onClick={() => recallReply(reply)} aria-label="Thu hồi lời trả lời" title="Thu hồi">{deletingId === reply.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}</button>}</div>; })}
+                {replies.map((reply) => { const mine = reply.senderId === user.uid; return <div className={`group flex items-center gap-2 ${mine ? "flex-row-reverse" : ""}`} key={reply.id}>{reply.senderPhotoUrl ? <span className="size-8 shrink-0 overflow-hidden rounded-full">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={reply.senderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blush/45 text-xs font-bold">{reply.senderName.slice(0, 1)}</span>}<div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-sm bg-blush/65" : "rounded-tl-sm bg-white shadow-sm"}`}><p>{reply.text}</p><span className="mt-1 block text-[9px] text-[#8f7b72]">{reply.senderName}</span></div>{mine && <button className="grid size-8 shrink-0 place-items-center rounded-full text-[#a47c75] opacity-70 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" type="button" disabled={deletingId === reply.id} onClick={() => setPendingRecall(reply)} aria-label="Thu hồi lời trả lời" title="Thu hồi">{deletingId === reply.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}</button>}</div>; })}
               </div>
             </div>
             {error && <p className="mx-4 mb-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
             <form className="flex gap-2 border-t border-[#eadbd0] bg-[#fffaf5] p-3" onSubmit={sendReply}><input className="soft-input min-w-0 py-2.5" maxLength={500} value={text} onChange={(event) => setText(event.target.value)} placeholder="Trả lời ảnh này..." /><button className="grid size-12 shrink-0 place-items-center rounded-2xl bg-blush shadow-soft disabled:opacity-50" type="submit" disabled={sending || !text.trim()} aria-label="Gửi trả lời">{sending ? <LoaderCircle className="size-5 animate-spin" /> : <Send className="size-5" />}</button></form>
+            <ConfirmDialog open={Boolean(pendingRecall)} title="Thu hồi lời trả lời?" description="Lời nhắn này sẽ biến mất với cả hai người và không thể khôi phục." confirmLabel="Thu hồi" busy={Boolean(deletingId)} onCancel={() => setPendingRecall(null)} onConfirm={recallReply} />
           </motion.section>
         </motion.div>
       )}

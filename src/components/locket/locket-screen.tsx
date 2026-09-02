@@ -14,6 +14,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
 import { PairingScreen } from "@/components/pairing/pairing-screen";
 import { db } from "@/lib/firebase";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import type { LocketPostDocument } from "@/types/firestore";
 
 type Post = LocketPostDocument & { id: string };
@@ -23,6 +24,7 @@ const EMOJIS = ["❤️", "🥰", "😂", "😮", "😭", "😘"];
 function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post: Post; userId: string; onReply: () => void }) {
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const reactionCounts = Object.values(post.reactions || {}).reduce<Record<string, number>>((counts, emoji) => {
     counts[emoji] = (counts[emoji] || 0) + 1;
@@ -37,14 +39,15 @@ function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post:
 
   async function deletePost() {
     if (!db || post.uploaderId !== userId) return;
-    if (!window.confirm("Xóa ảnh Locket này? Ảnh sẽ biến mất với cả hai người và không thể khôi phục.")) return;
     setDeleting(true);
     setDeleteError("");
     try {
       await deleteDoc(doc(db, "couples", coupleId, "locketPosts", post.id));
     } catch (caught) {
       setDeleteError(caught instanceof Error ? caught.message : "Chưa thể xóa ảnh Locket.");
+    } finally {
       setDeleting(false);
+      setDeleteConfirmOpen(false);
     }
   }
 
@@ -55,7 +58,7 @@ function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post:
       <div className="flex items-center gap-3 px-4 py-3">
         {post.uploaderPhotoUrl ? <span className="size-10 overflow-hidden rounded-full bg-blush/30">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={post.uploaderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-10 place-items-center rounded-full bg-blush/45 font-bold">{post.uploaderName.slice(0, 1)}</span>}
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{post.uploaderName}</p><p className="text-[10px] text-[#9b857b]">{createdAt ? createdAt.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "Vừa đăng"}</p></div>
-        {post.uploaderId === userId && <button className="grid size-9 shrink-0 place-items-center rounded-full text-[#a36f78] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50" type="button" onClick={deletePost} disabled={deleting} aria-label="Xóa ảnh Locket" title="Xóa ảnh">{deleting ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}</button>}
+        {post.uploaderId === userId && <button className="grid size-9 shrink-0 place-items-center rounded-full text-[#a36f78] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50" type="button" onClick={() => setDeleteConfirmOpen(true)} disabled={deleting} aria-label="Xóa ảnh Locket" title="Xóa ảnh">{deleting ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}</button>}
       </div>
       <div className="aspect-square overflow-hidden bg-[#eadbd0]">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={post.imageUrl} alt={post.caption || "Ảnh Locket"} className="size-full object-cover" /></div>
       <div className="p-4">
@@ -68,6 +71,7 @@ function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post:
           {reactionsOpen && <motion.div className="absolute bottom-[calc(100%+0.6rem)] left-0 flex gap-1 rounded-full bg-white/95 p-2 shadow-soft" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>{EMOJIS.map((emoji) => <button className="grid size-9 place-items-center rounded-full text-xl transition hover:scale-110 hover:bg-blush/20" type="button" key={emoji} onClick={() => react(emoji)} aria-label={`Thả ${emoji}`}>{emoji}</button>)}</motion.div>}
         </div>
       </div>
+      <ConfirmDialog open={deleteConfirmOpen} title="Xóa ảnh Locket?" description="Ảnh này sẽ biến mất với cả hai người và không thể khôi phục." confirmLabel="Xóa ảnh" busy={deleting} onCancel={() => setDeleteConfirmOpen(false)} onConfirm={deletePost} />
     </motion.article>
   );
 }
