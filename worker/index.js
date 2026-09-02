@@ -1,21 +1,20 @@
-/* global firebase, importScripts, clients */
-importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js");
+/* global self, clients */
 
-// Firebase Web config là thông tin công khai. Client truyền qua query string khi đăng ký SW.
-const params = new URL(self.location.href).searchParams;
-firebase.initializeApp({
-  apiKey: params.get("apiKey"),
-  authDomain: params.get("authDomain"),
-  projectId: params.get("projectId"),
-  storageBucket: params.get("storageBucket"),
-  messagingSenderId: params.get("messagingSenderId"),
-  appId: params.get("appId"),
+import { initializeApp } from "firebase/app";
+import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
+
+const firebaseApp = initializeApp({
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 });
 
-const messaging = firebase.messaging();
+const messaging = getMessaging(firebaseApp);
 
-messaging.onBackgroundMessage((payload) => {
+onBackgroundMessage(messaging, (payload) => {
   const title = payload.data?.title || payload.notification?.title || "Love Days 💌";
   const options = {
     body: payload.data?.body || payload.notification?.body || "Bạn có một điều mới từ người thương.",
@@ -23,7 +22,7 @@ messaging.onBackgroundMessage((payload) => {
     badge: "/icon.svg",
     tag: `${payload.data?.type || "love-days"}-${payload.data?.itemId || "new"}`,
     renotify: true,
-    data: { url: payload.data?.url || "/" },
+    data: { url: payload.data?.url || payload.data?.route || "/" },
   };
   return self.registration.showNotification(title, options);
 });

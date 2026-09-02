@@ -1,6 +1,6 @@
 import { arrayUnion, doc, setDoc } from "firebase/firestore";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
-import { db, firebaseApp, firebaseConfig } from "@/lib/firebase";
+import { db, firebaseApp } from "@/lib/firebase";
 
 export async function getFCMToken(): Promise<string> {
   if (typeof window === "undefined" || !firebaseApp || !(await isSupported()) || !("serviceWorker" in navigator)) {
@@ -14,15 +14,14 @@ export async function getFCMToken(): Promise<string> {
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
   if (!vapidKey) throw new Error("Thiếu NEXT_PUBLIC_FIREBASE_VAPID_KEY.");
 
-  const firebaseParams = new URLSearchParams(
-    Object.entries(firebaseConfig).reduce<Record<string, string>>((result, [key, value]) => {
-      if (value) result[key] = value;
-      return result;
-    }, {}),
-  );
-  const registration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?${firebaseParams.toString()}`, {
-    scope: "/firebase-cloud-messaging-push-scope",
-  });
+  // Gỡ registration scope cũ để notification luôn thuộc chính PWA đã cài trên màn hình chính.
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations
+    .filter((item) => new URL(item.scope).pathname.startsWith("/firebase-cloud-messaging-push-scope"))
+    .map((item) => item.unregister()));
+
+  const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  await navigator.serviceWorker.ready;
   const token = await getToken(getMessaging(firebaseApp), {
     vapidKey,
     serviceWorkerRegistration: registration,

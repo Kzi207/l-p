@@ -10,8 +10,7 @@ import { db, firebaseApp } from "@/lib/firebase";
 import { flushNotificationQueue } from "@/lib/notification-client";
 
 async function showSystemNotification(title: string, body: string, url: string, tag: string) {
-  const registration = await navigator.serviceWorker.getRegistration("/firebase-cloud-messaging-push-scope")
-    || await navigator.serviceWorker.getRegistration("/");
+  const registration = await navigator.serviceWorker.getRegistration("/");
   if (!registration) return;
   await registration.showNotification(title, {
     body,
