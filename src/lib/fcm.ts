@@ -89,10 +89,27 @@ export async function getFCMToken(): Promise<string> {
     "Service Worker phản hồi quá lâu. Hãy tải lại ứng dụng rồi thử lại.",
   );
   registration.waiting?.postMessage({ type: "SKIP_WAITING" });
-  const activeRegistration = await withTimeout(
-    waitForActiveServiceWorker(registration),
-    "Service Worker chưa active sau 15 giây. Hãy tải lại trang để hoàn tất cập nhật rồi đăng ký lại.",
-  );
+  let activeRegistration: ServiceWorkerRegistration;
+  try {
+    activeRegistration = await withTimeout(
+      waitForActiveServiceWorker(registration),
+      "PWA worker chưa active.",
+      5_000,
+    );
+  } catch {
+    // Một số phiên bản iOS giữ Workbox worker cũ ở trạng thái waiting rất lâu.
+    // Worker push độc lập này không điều khiển giao diện nên có thể active ngay.
+    const pushRegistration = await withTimeout(
+      navigator.serviceWorker.register("/push-sw.js", { scope: "/push-notifications/", updateViaCache: "none" }),
+      "Không thể cài Service Worker dành cho thông báo.",
+    );
+    pushRegistration.waiting?.postMessage({ type: "SKIP_WAITING" });
+    activeRegistration = await withTimeout(
+      waitForActiveServiceWorker(pushRegistration),
+      "Service Worker thông báo chưa thể kích hoạt. Hãy xóa dữ liệu website rồi mở lại ứng dụng.",
+      10_000,
+    );
+  }
   const token = await withTimeout(getToken(getMessaging(firebaseApp), {
     vapidKey,
     serviceWorkerRegistration: activeRegistration,

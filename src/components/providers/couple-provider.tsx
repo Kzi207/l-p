@@ -41,7 +41,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
     const userRef = doc(db, "users", user.uid);
     return onSnapshot(userRef, async (snapshot) => {
       if (!snapshot.exists()) {
-        await setDoc(userRef, {
+        const newProfile: UserDocument = {
           displayName: user.displayName || user.email?.split("@")[0] || "Người thương",
           email: user.email || "",
           nickname: "",
@@ -49,6 +49,16 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
           bio: "",
           photoURL: user.photoURL || "",
           coupleId: null,
+        };
+        // Hiển thị giao diện ngay; Firestore write có thể chờ mạng vô thời hạn
+        // trên lần mở đầu tiên nên không được dùng nó để khóa toàn bộ app.
+        setProfile(newProfile);
+        setCouple(null);
+        setPartner(null);
+        setError("");
+        setLoading(false);
+        void setDoc(userRef, newProfile).catch((caught) => {
+          setError(caught instanceof Error ? caught.message : "Chưa thể tạo hồ sơ lần đầu.");
         });
         return;
       }
