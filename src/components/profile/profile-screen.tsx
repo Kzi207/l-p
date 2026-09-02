@@ -26,6 +26,7 @@ export function ProfileScreen() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [notificationStatus, setNotificationStatus] = useState<"idle" | "loading" | "granted" | "denied" | "unsupported">("idle");
+  const [notificationError, setNotificationError] = useState("");
 
   useEffect(() => {
     if (!profile) return;
@@ -35,6 +36,12 @@ export function ProfileScreen() {
     setBio(profile.bio || "");
     setPhotoURL(profile.photoURL || "");
   }, [profile]);
+
+  useEffect(() => {
+    if (typeof Notification === "undefined") setNotificationStatus("unsupported");
+    else if (Notification.permission === "granted") setNotificationStatus("granted");
+    else if (Notification.permission === "denied") setNotificationStatus("denied");
+  }, []);
 
   if (!user) return <LoginScreen />;
   if (loading) return <main className="grid min-h-dvh place-items-center"><LoaderCircle className="size-8 animate-spin text-[#d17485]" /></main>;
@@ -71,10 +78,12 @@ export function ProfileScreen() {
 
   async function enableNotifications() {
     setNotificationStatus("loading");
+    setNotificationError("");
     try {
       setNotificationStatus(await registerForPushNotifications(userId));
-    } catch {
-      setNotificationStatus("denied");
+    } catch (caught) {
+      setNotificationStatus("idle");
+      setNotificationError(caught instanceof Error ? caught.message : "Chưa thể bật thông báo. Hãy thử lại.");
     }
   }
 
@@ -161,6 +170,7 @@ export function ProfileScreen() {
           <div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 break-all text-xs">{userId}</code><button className="grid size-10 shrink-0 place-items-center rounded-xl bg-blush/35" type="button" onClick={copyUid} aria-label="Sao chép UID"><Copy className="size-4" /></button></div>
           <button className="secondary-button mt-4 w-full" type="button" disabled={notificationStatus === "loading" || notificationStatus === "granted"} onClick={enableNotifications}><Bell className="size-4" />{notificationStatus === "granted" ? "Đã bật thông báo" : notificationStatus === "loading" ? "Đang bật..." : "Bật thông báo ảnh và tin nhắn"}</button>
           {(notificationStatus === "denied" || notificationStatus === "unsupported") && <p className="mt-2 text-xs text-red-700">Trình duyệt chưa cho phép hoặc không hỗ trợ thông báo.</p>}
+          {notificationError && <p className="mt-2 text-xs text-red-700">{notificationError}</p>}
         </section>
 
         <section className="soft-card mt-5 p-5 text-center">

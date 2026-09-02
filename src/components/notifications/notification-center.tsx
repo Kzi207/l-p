@@ -29,6 +29,7 @@ interface NotificationCenterProps {
   user: User;
   coupleId: string;
   pushStatus: PushStatus;
+  pushError: string;
   onEnablePush: () => Promise<void>;
   onUnreadChange: (count: number) => void;
 }
@@ -49,7 +50,7 @@ function formatTime(timestamp: Timestamp | null) {
     : { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
-export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, onEnablePush, onUnreadChange }: NotificationCenterProps) {
+export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, pushError, onEnablePush, onUnreadChange }: NotificationCenterProps) {
   const [messages, setMessages] = useState<NotificationItem[]>([]);
   const [lockets, setLockets] = useState<NotificationItem[]>([]);
   const [memories, setMemories] = useState<NotificationItem[]>([]);
@@ -162,7 +163,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
           <div className="overflow-y-auto px-4 pb-5">
             <section className="mt-4 flex items-center gap-3 rounded-2xl bg-white/65 p-3 shadow-soft">
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-blush/25">{pushStatus === "granted" ? <BellRing className="size-5 text-[#d36f80]" /> : <Bell className="size-5 text-[#9b7780]" />}</span>
-              <div className="min-w-0 flex-1"><p className="text-sm font-bold">Thông báo trên thiết bị</p><p className="text-xs text-[#806e65]">{pushStatus === "granted" ? "Đã bật cho ảnh và tin nhắn mới." : pushStatus === "denied" ? "Trình duyệt đang chặn quyền thông báo." : pushStatus === "unsupported" ? "Thiết bị này chưa hỗ trợ Web Push." : "Bật để nhận tin ngay cả khi không mở ứng dụng."}</p></div>
+              <div className="min-w-0 flex-1"><p className="text-sm font-bold">Thông báo trên thiết bị</p><p className={`text-xs ${pushError ? "text-red-700" : "text-[#806e65]"}`}>{pushError || (pushStatus === "granted" ? "Đã bật cho ảnh và tin nhắn mới." : pushStatus === "denied" ? "Trình duyệt đang chặn quyền thông báo." : pushStatus === "unsupported" ? "Thiết bị này chưa hỗ trợ Web Push." : "Bật để nhận tin ngay cả khi không mở ứng dụng.")}</p></div>
               {pushStatus !== "granted" && pushStatus !== "unsupported" && <button className="rounded-xl bg-[#d87989] px-3 py-2 text-xs font-bold text-white disabled:opacity-60" type="button" disabled={pushStatus === "loading" || pushStatus === "denied"} onClick={onEnablePush}>{pushStatus === "loading" ? <LoaderCircle className="size-4 animate-spin" /> : "Bật"}</button>}
             </section>
 

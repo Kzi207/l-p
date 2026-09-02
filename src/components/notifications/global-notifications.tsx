@@ -15,6 +15,7 @@ export function GlobalNotifications() {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [pushStatus, setPushStatus] = useState<PushStatus>("idle");
+  const [pushError, setPushError] = useState("");
 
   useEffect(() => {
     if (typeof Notification === "undefined") setPushStatus("unsupported");
@@ -25,10 +26,12 @@ export function GlobalNotifications() {
   async function enablePush() {
     if (!user) return;
     setPushStatus("loading");
+    setPushError("");
     try {
       setPushStatus(await registerForPushNotifications(user.uid));
-    } catch {
-      setPushStatus("denied");
+    } catch (caught) {
+      setPushStatus("idle");
+      setPushError(caught instanceof Error ? caught.message : "Chưa thể bật thông báo. Hãy thử lại.");
     }
   }
 
@@ -54,10 +57,9 @@ export function GlobalNotifications() {
           </button>
         </div>
       </div>
-      <NotificationCenter open={open} onClose={() => setOpen(false)} user={user} coupleId={couple.id} pushStatus={pushStatus} onEnablePush={enablePush} onUnreadChange={setUnread} />
+      <NotificationCenter open={open} onClose={() => setOpen(false)} user={user} coupleId={couple.id} pushStatus={pushStatus} pushError={pushError} onEnablePush={enablePush} onUnreadChange={setUnread} />
     </>
   );
 }
-
 
 
