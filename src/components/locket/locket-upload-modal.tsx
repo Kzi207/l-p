@@ -10,6 +10,7 @@ import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase";
 import { cropImageToSquare, type SquareCrop } from "@/lib/image";
+import { sendNotificationInBackground } from "@/lib/notification-client";
 import type { UserDocument } from "@/types/firestore";
 
 export function LocketUploadModal({ open, user, coupleId, profile, initialFiles = [], onClose }: { open: boolean; user: User; coupleId: string; profile: UserDocument | null; initialFiles?: File[]; onClose: () => void }) {
@@ -117,7 +118,7 @@ export function LocketUploadModal({ open, user, coupleId, profile, initialFiles 
         const square = await cropImageToSquare(files[index], 1600, crops[index]);
         const compressed = await imageCompression(square, { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true, fileType: "image/jpeg" });
         const upload = await uploadToCloudinary(compressed, "love-days/locket-feed");
-        await addDoc(collection(db, "couples", coupleId, "locketPosts"), {
+        const locket = await addDoc(collection(db, "couples", coupleId, "locketPosts"), {
           imageUrl: upload.secure_url,
           cloudinaryPublicId: upload.public_id,
           caption: caption.trim(),
@@ -126,6 +127,12 @@ export function LocketUploadModal({ open, user, coupleId, profile, initialFiles 
           uploaderId: user.uid,
           uploaderName: profile?.nickname || profile?.displayName || user.displayName || "Người thương",
           uploaderPhotoUrl: profile?.photoURL || user.photoURL || "",
+        });
+        sendNotificationInBackground(user, "/api/notify/locket", {
+          senderUid: user.uid,
+          locketId: locket.id,
+          imageUrl: upload.secure_url,
+          caption: caption.trim(),
         });
       }
       setBusy(false);

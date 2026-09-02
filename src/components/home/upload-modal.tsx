@@ -9,6 +9,7 @@ import type { User } from "firebase/auth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/firebase";
 import { cropImageToSquare } from "@/lib/image";
+import { sendNotificationInBackground } from "@/lib/notification-client";
 import type { UserDocument } from "@/types/firestore";
 
 interface UploadModalProps {
@@ -69,7 +70,7 @@ export function UploadModal({ open, user, coupleId, profile, onClose }: UploadMo
       setStatus("saving");
 
       const uploaderName = profile?.nickname || profile?.displayName || user.displayName || "Người thương";
-      await addDoc(collection(db, "couples", coupleId, "photos"), {
+      const photo = await addDoc(collection(db, "couples", coupleId, "photos"), {
         imageUrl: upload.secure_url,
         cloudinaryPublicId: upload.public_id,
         caption: caption.trim(),
@@ -77,6 +78,12 @@ export function UploadModal({ open, user, coupleId, profile, onClose }: UploadMo
         createdAt: serverTimestamp(),
         uploaderId: user.uid,
         uploaderName,
+      });
+      sendNotificationInBackground(user, "/api/notify/photo", {
+        senderUid: user.uid,
+        photoId: photo.id,
+        imageUrl: upload.secure_url,
+        caption: caption.trim(),
       });
       setStatus("idle");
       close(true);

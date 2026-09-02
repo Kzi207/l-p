@@ -2,6 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { Disc3, Download, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 
@@ -37,11 +40,13 @@ function downloadUrl(track: MusicTrack) {
 
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [selected, setSelected] = useState<MusicTrack | null>(null);
   const [queue, setQueue] = useState<MusicTrack[]>([]);
   const [playing, setPlaying] = useState(false);
   const [playbackError, setPlaybackError] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const compact = pathname !== "/music";
 
   const selectedIndex = useMemo(() => selected ? queue.findIndex((track) => trackKey(track) === trackKey(selected)) : -1, [queue, selected]);
   const streamUrl = selected ? `/api/music/stream?source=${selected.source}&url=${encodeURIComponent(selected.url)}` : "";
@@ -75,10 +80,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    if (selected && user) document.body.classList.add("music-player-active");
-    else document.body.classList.remove("music-player-active");
-    return () => document.body.classList.remove("music-player-active");
-  }, [selected, user]);
+    if (selected && user) {
+      document.body.classList.add("music-player-active");
+      document.body.classList.toggle("music-player-compact", compact);
+    } else {
+      document.body.classList.remove("music-player-active", "music-player-compact");
+    }
+    return () => document.body.classList.remove("music-player-active", "music-player-compact");
+  }, [compact, selected, user]);
 
   useEffect(() => {
     if (user) return;
@@ -129,7 +138,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   return <MusicPlayerContext.Provider value={value}>
     {children}
-    {user && selected && <aside className="global-music-player fixed inset-x-0 bottom-[6.7rem] z-20 px-2 sm:px-6" aria-label="Trình phát nhạc"><div className="app-frame rounded-[1.6rem] border border-white/80 bg-[#fffaf5]/95 p-3 shadow-[0_10px_35px_rgba(74,59,52,.22)] backdrop-blur-xl"><div className="flex items-center gap-2 sm:gap-3"><span className="size-12 shrink-0 overflow-hidden rounded-xl bg-[#eadbd0]">{selected.thumbnail ? <img className="size-full object-cover" src={selected.thumbnail} alt="" /> : <Disc3 className="m-3 size-6" />}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{selected.title}</p><p className="truncate text-[11px] text-[#8b756a]">{selected.artist}</p></div><a className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-white" href={downloadUrl(selected)} download aria-label="Tải bài đang phát" title="Tải MP3"><Download className="size-4" /></a><button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(-1)} aria-label="Bài trước"><SkipBack className="size-4 fill-current" /></button><button className="grid size-11 shrink-0 place-items-center rounded-full bg-blush text-cocoa shadow-soft" type="button" onClick={togglePlayback} aria-label={playing ? "Tạm dừng" : "Phát nhạc"}>{playing ? <Pause className="size-5 fill-current" /> : <Play className="ml-0.5 size-5 fill-current" />}</button><button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(1)} aria-label="Bài tiếp theo"><SkipForward className="size-4 fill-current" /></button></div><audio ref={audioRef} className="mt-2 h-9 w-full" key={streamUrl} src={streamUrl} controls autoPlay onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => stepTrack(1)} onError={() => { setPlaying(false); setPlaybackError("Chưa thể phát bài này. Hãy thử lại hoặc chọn bài khác."); }} />{playbackError && <p className="mt-1 text-center text-[10px] text-red-700">{playbackError}</p>}<p className="mt-1 hidden text-center text-[10px] text-[#9a857b] sm:block"><kbd className="font-semibold">Space</kbd> phát/dừng · <kbd className="font-semibold">M</kbd> tắt âm · <kbd className="font-semibold">← →</kbd> tua 5 giây · <kbd className="font-semibold">↑ ↓</kbd> âm lượng · <kbd className="font-semibold">P/N</kbd> đổi bài</p></div></aside>}
+    {user && selected && <aside className="global-music-player fixed inset-x-0 bottom-[6.7rem] z-20 px-2 sm:px-6" aria-label="Trình phát nhạc"><motion.div layout className={`${compact ? "mx-auto max-w-md rounded-[1.35rem] p-2" : "app-frame rounded-[1.6rem] p-3"} border border-white/80 bg-[#fffaf5]/95 shadow-[0_10px_35px_rgba(74,59,52,.22)] backdrop-blur-xl`}><div className="flex items-center gap-2 sm:gap-3"><Link className={`${compact ? "size-10" : "size-12"} shrink-0 overflow-hidden rounded-xl bg-[#eadbd0]`} href="/music" aria-label="Mở trang âm nhạc">{selected.thumbnail ? <img className="size-full object-cover" src={selected.thumbnail} alt="" /> : <Disc3 className={compact ? "m-2.5 size-5" : "m-3 size-6"} />}</Link><Link className="min-w-0 flex-1" href="/music"><p className="truncate text-sm font-bold">{selected.title}</p><p className="truncate text-[11px] text-[#8b756a]">{selected.artist}</p></Link>{!compact && <a className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-white" href={downloadUrl(selected)} download aria-label="Tải bài đang phát" title="Tải MP3"><Download className="size-4" /></a>}{!compact && <button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(-1)} aria-label="Bài trước"><SkipBack className="size-4 fill-current" /></button>}<button className={`${compact ? "size-10" : "size-11"} grid shrink-0 place-items-center rounded-full bg-blush text-cocoa shadow-soft`} type="button" onClick={togglePlayback} aria-label={playing ? "Tạm dừng" : "Phát nhạc"}>{playing ? <Pause className="size-5 fill-current" /> : <Play className="ml-0.5 size-5 fill-current" />}</button>{!compact && <button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(1)} aria-label="Bài tiếp theo"><SkipForward className="size-4 fill-current" /></button>}</div><audio ref={audioRef} className={compact ? "hidden" : "mt-2 h-9 w-full"} key={streamUrl} src={streamUrl} controls autoPlay onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => stepTrack(1)} onError={() => { setPlaying(false); setPlaybackError("Chưa thể phát bài này. Hãy thử lại hoặc chọn bài khác."); }} />{playbackError && <p className="mt-1 text-center text-[10px] text-red-700">{playbackError}</p>}{!compact && <p className="mt-1 hidden text-center text-[10px] text-[#9a857b] sm:block"><kbd className="font-semibold">Space</kbd> phát/dừng · <kbd className="font-semibold">M</kbd> tắt âm · <kbd className="font-semibold">← →</kbd> tua 5 giây · <kbd className="font-semibold">↑ ↓</kbd> âm lượng · <kbd className="font-semibold">P/N</kbd> đổi bài</p>}</motion.div></aside>}
   </MusicPlayerContext.Provider>;
 }
 

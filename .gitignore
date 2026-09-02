@@ -19,6 +19,8 @@ firebase-debug.log
 # misc
 .DS_Store
 *.pem
+service-account*.json
+firebase-admin-key*.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

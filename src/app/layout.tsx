@@ -16,6 +16,13 @@ export const metadata: Metadata = {
   title: "Love Days — Góc nhỏ của chúng mình",
   description: "Đếm từng ngày yêu và giữ lại những khoảnh khắc chỉ thuộc về hai người.",
   manifest: "/manifest.json",
+  applicationName: "Love Days",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    other: [{ rel: "mask-icon", url: "/icon.svg", color: "#d96578" }],
+  },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Love Days" },
 };
 

@@ -1,0 +1,17 @@
+name: Kiểm tra thư tới ngày mở
+
+on:
+  schedule:
+    # 01:00 UTC = 08:00 sáng tại Việt Nam.
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+jobs:
+  notify-timecapsules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gọi Vercel API kiểm tra Hộp thư
+        run: |
+          curl --fail-with-body --retry 2 --request POST \
+            --header "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "https://love.khanhduy.id.vn/api/notify/timecapsule-check"

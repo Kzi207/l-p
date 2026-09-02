@@ -27,9 +27,9 @@ function TimelineCard({ memory, index, onOpen }: { memory: Memory; index: number
     <motion.article className="relative pl-12 sm:pl-16" initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ delay: Math.min(index * 0.04, 0.2) }}>
       <span className="absolute left-[1.05rem] top-8 z-10 grid size-8 place-items-center rounded-full border-4 border-[#fff8f0] bg-blush text-white shadow-sm sm:left-[1.55rem]"><Heart className="size-3.5 fill-white" /></span>
       <button className="soft-card group w-full overflow-hidden text-left transition hover:-translate-y-1" type="button" onClick={onOpen}>
-        <div className="aspect-[16/10] overflow-hidden bg-[#eadbd0]">
+        <div className="overflow-hidden bg-[#eadbd0]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={memory.imageUrl} alt={memory.title} className="size-full object-cover transition duration-500 group-hover:scale-105" />
+          <img src={memory.imageUrl} alt={memory.title} className="h-auto w-full object-contain transition duration-500 group-hover:scale-[1.02]" />
         </div>
         <div className="p-5">
           <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#a16f78]"><CalendarDays className="size-4" />{formatDate(memory)}</p>
@@ -46,7 +46,7 @@ function GridCard({ memory, onOpen }: { memory: Memory; onOpen: () => void }) {
   return (
     <motion.button className="group block w-full overflow-hidden rounded-[1.5rem] bg-white/55 text-left shadow-soft" type="button" onClick={onOpen} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={memory.imageUrl} alt={memory.title} className="h-auto w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+      <img src={memory.imageUrl} alt={memory.title} className="h-auto w-full object-contain transition duration-500 group-hover:scale-[1.02]" />
       <span className="block p-4">
         <span className="block text-[10px] font-bold uppercase tracking-wider text-[#a16f78]">{formatDate(memory)}</span>
         <span className="mt-1 block font-display text-lg font-bold leading-tight">{memory.title}</span>

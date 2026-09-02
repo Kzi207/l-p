@@ -7,6 +7,7 @@ import { LoaderCircle, MessageCircleHeart, Send, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { db } from "@/lib/firebase";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { sendNotificationInBackground } from "@/lib/notification-client";
 import type { LocketMessageDocument } from "@/types/firestore";
 import type { UserDocument } from "@/types/firestore";
 
@@ -78,12 +79,18 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
     inputRef.current?.focus();
     setSending(true);
     try {
-      await addDoc(collection(db, "couples", coupleId, "locketMessages"), {
-        text: text.trim(),
+      const messageText = text.trim();
+      const message = await addDoc(collection(db, "couples", coupleId, "locketMessages"), {
+        text: messageText,
         createdAt: serverTimestamp(),
         senderId: user.uid,
         senderName: profile?.nickname || profile?.displayName || user.displayName || "Người thương",
         senderPhotoUrl: profile?.photoURL || user.photoURL || "",
+      });
+      sendNotificationInBackground(user, "/api/notify/chat", {
+        senderUid: user.uid,
+        messageId: message.id,
+        text: messageText,
       });
       setText("");
       window.requestAnimationFrame(() => inputRef.current?.focus());

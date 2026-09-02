@@ -1,12 +1,12 @@
 "use client";
 
-import { Camera, Heart, Home, Images, UserRound } from "lucide-react";
+import { Camera, Home, Images, Music2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const leftItems = [
   { label: "Trang chủ", icon: Home, href: "/" },
-  { label: "Timeline", icon: Heart, href: "/timeline" },
+  { label: "Âm nhạc", icon: Music2, href: "/music" },
 ];
 
 const rightItems = [

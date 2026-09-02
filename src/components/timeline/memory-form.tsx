@@ -123,10 +123,10 @@ export function MemoryForm({ open, user, coupleId, profile, onClose }: MemoryFor
               <button className="grid size-10 place-items-center rounded-full bg-white/70 shadow-soft" type="button" onClick={() => resetAndClose()} aria-label="Đóng"><X className="size-5" /></button>
             </div>
 
-            <button className="mt-5 block aspect-[4/3] w-full overflow-hidden rounded-[1.6rem] border-2 border-dashed border-[#e4b5bd] bg-white/45 shadow-insetSoft" type="button" onClick={() => fileInput.current?.click()}>
+            <button className="mt-5 block min-h-52 w-full overflow-hidden rounded-[1.6rem] border-2 border-dashed border-[#e4b5bd] bg-white/45 shadow-insetSoft" type="button" onClick={() => fileInput.current?.click()}>
               {preview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={preview} alt="Ảnh kỷ niệm đang chọn" className="size-full object-cover" />
+                <img src={preview} alt="Ảnh kỷ niệm đang chọn" className="h-auto max-h-[65dvh] w-full object-contain" />
               ) : (
                 <span className="flex size-full flex-col items-center justify-center gap-2 text-[#a47f78]"><ImagePlus className="size-9" /><span className="text-sm font-semibold">Chọn ảnh kỷ niệm</span></span>
               )}

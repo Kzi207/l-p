@@ -13,7 +13,7 @@ Web app mobile-first dành cho hai người: đăng nhập riêng tư, đếm ng
 - Chọn ảnh từ thư viện hoặc mở camera sau trên mobile, nén client-side và upload unsigned lên Cloudinary.
 - Ảnh chung trên trang chủ có thể được một trong hai người thay đổi bất cứ lúc nào.
 - Nút camera Locket nằm giữa thanh điều hướng để mở nhanh khu ảnh, reaction, reply và chat realtime.
-- Đăng ký FCM token trên trình duyệt và Cloud Function gửi thông báo cho người còn lại.
+- Đăng ký FCM token trên trình duyệt và Vercel API Routes gửi thông báo cho người còn lại, không cần Firebase Blaze.
 
 ## 1. Chạy project lần đầu
 
@@ -100,25 +100,59 @@ NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
 
 Unsigned preset và cloud name là dữ liệu phía client, không đặt API secret Cloudinary trong `.env.local`. Client nén ảnh về tối đa khoảng 1 MB trước khi upload.
 
-## 4. Deploy Cloud Function gửi FCM
+## 4. Web Push bằng Vercel API Routes — không cần Firebase Blaze
 
-Code nằm trong `functions/src/index.ts`. Bốn Function gửi Web Push cho người còn lại khi có ảnh chung, Locket, ảnh/video kỷ niệm hoặc tin nhắn mới.
+Bốn route `/api/notify/photo`, `/api/notify/locket`, `/api/notify/memory` và `/api/notify/chat` thay cho bốn Firestore trigger cũ. Client gọi route tương ứng ngay sau khi ghi Firestore thành công. Server bắt buộc xác thực Firebase ID token, kiểm tra UID người gửi, couple và document vừa tạo trước khi gửi FCM cho người còn lại.
 
-```bash
-cd functions
-npm install
-npm run build
-cd ..
-npx firebase-tools deploy --only functions:notifyPartnerAboutPhoto,functions:notifyPartnerAboutMessage,functions:notifyPartnerAboutLocket,functions:notifyPartnerAboutMemory
+### 4.1 Lấy Firebase Service Account
+
+1. Vào **Firebase Console → Project settings → Service accounts**.
+2. Chọn **Generate new private key** và xác nhận để tải file JSON.
+3. Không đổi tên file thành tên chung như `config.json`, không đặt trong `public/` và tuyệt đối không commit lên Git. `.gitignore` đã chặn `service-account*.json` và `firebase-admin-key*.json`.
+4. Mở JSON, lấy ba giá trị `project_id`, `client_email`, `private_key` để tạo biến môi trường. Admin SDK server-side không phải Cloud Functions nên bước này không yêu cầu nâng gói Blaze.
+
+### 4.2 Biến môi trường mới trên Vercel
+
+Vào **Vercel → Project → Settings → Environment Variables**, thêm cho Production (và Preview nếu cần):
+
+```env
+FIREBASE_ADMIN_PROJECT_ID=khanhduyyyy-bee16
+FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-...@khanhduyyyy-bee16.iam.gserviceaccount.com
+FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+APP_URL=https://love.khanhduy.id.vn
+CRON_SECRET=mot-chuoi-ngau-nhien-dai-va-kho-doan
 ```
 
-Lần deploy đầu, CLI sẽ hỏi parameter `APP_URL`; nhập URL HTTPS Vercel đầy đủ, ví dụ `https://love-days.example.vercel.app`.
+Giữ nguyên ký tự `\n` trong `FIREBASE_ADMIN_PRIVATE_KEY`; code sẽ đổi chúng thành xuống dòng thật khi khởi tạo Admin SDK. Không thêm tiền tố `NEXT_PUBLIC_` cho bất kỳ biến nào ở trên. Sau khi lưu biến, redeploy project Vercel.
 
-### Lưu ý bắt buộc về chi phí
+### 4.3 Retry và hàng đợi thông báo
 
-Firebase hiện yêu cầu project ở **Blaze (pay-as-you-go)** mới deploy được Cloud Functions. Blaze có quota miễn phí, nhưng có thể phát sinh phí nhỏ (bao gồm lưu artifact khi deploy) và không thể hứa tuyệt đối hóa đơn luôn bằng 0. Nếu giữ Spark plan, thông báo khi app đang mở vẫn hoạt động nhưng Web Push nền khi app đã đóng sẽ không có máy chủ để gửi.
+Request thông báo chạy nền nên không làm chậm upload hoặc gửi tin nhắn. Nếu request thất bại, client thử lại thêm 2 lần, mỗi lần cách 2 giây. Nếu vẫn lỗi, request được giữ trong `localStorage` và tự thử lại khi app mở lần sau hoặc thiết bị có mạng trở lại.
 
-Nếu chấp nhận Blaze, hãy tạo Budget Alert và spend cap cho Cloud Run Functions trong Google Cloud Console, đồng thời theo dõi Artifact Registry. Đây là giới hạn nền tảng chứ không phải giới hạn của code.
+Đánh đổi cần biết: Firestore trigger trên Cloud Functions đáng tin cậy hơn vì không phụ thuộc client. Cách Vercel vẫn có xác suất nhỏ bỏ lỡ thông báo nếu người dùng đóng app ngay sau khi ghi dữ liệu, trước khi request hoặc hàng đợi kịp được lưu. Với app hai người dùng thường xuyên, retry và hàng đợi giúp rủi ro này ở mức chấp nhận được.
+
+Thư mục `functions/` cũ chỉ còn để tham khảo. `firebase.json` đã bỏ cấu hình Functions nên quy trình hiện tại không deploy các function cũ nữa. Nếu trước đây đã deploy chúng, xóa một lần để tránh nhận thông báo trùng:
+
+```bash
+npx firebase-tools functions:delete notifyPartnerAboutPhoto notifyPartnerAboutMessage notifyPartnerAboutLocket notifyPartnerAboutMemory --region asia-southeast1
+```
+
+### 4.4 Cron cho thư tới ngày mở
+
+Route `/api/notify/timecapsule-check` được bảo vệ bằng header `x-cron-secret`. Workflow `.github/workflows/timecapsule-cron.yml` gọi route lúc **01:00 UTC / 08:00 Việt Nam** mỗi ngày.
+
+1. Vào GitHub repository → **Settings → Secrets and variables → Actions**.
+2. Tạo Repository secret tên `CRON_SECRET`, giá trị phải giống hệt biến trên Vercel.
+3. Vào tab **Actions → Kiểm tra thư tới ngày mở → Run workflow** để test thủ công bằng trigger `workflow_dispatch`.
+4. Kết quả thành công trả JSON gồm ngày kiểm tra, số thư phù hợp và số notification đã gửi.
+
+Deploy index collection-group cho trường `timeCapsules.openDate` cùng Firestore Rules:
+
+```bash
+npx firebase-tools deploy --only firestore:rules,firestore:indexes
+```
+
+Nếu đổi domain production, cập nhật cả `APP_URL` trên Vercel và URL trong `.github/workflows/timecapsule-cron.yml`.
 
 ## 5. Deploy frontend lên Vercel
 
@@ -126,7 +160,7 @@ Nếu chấp nhận Blaze, hãy tạo Budget Alert và spend cap cho Cloud Run F
 2. Vào [Vercel Dashboard](https://vercel.com/new), chọn **Add New → Project** và import repository.
 3. Vercel tự nhận Framework Preset là **Next.js**. Giữ Build Command `npm run build` và Output mặc định.
 4. Trong **Settings → Environment Variables**, thêm đủ toàn bộ biến trong `.env.local.example` cho Production, Preview và Development theo nhu cầu.
-5. Chọn **Deploy**. Sau khi có domain chính thức, cập nhật `APP_URL` của Cloud Function và deploy lại Function nếu URL đã thay đổi.
+5. Chọn **Deploy**. Sau khi có domain chính thức, cập nhật biến `APP_URL` trên Vercel và redeploy nếu URL đã thay đổi.
 6. Trong Firebase Authentication, thêm domain Vercel vào **Settings → Authorized domains** nếu chưa có.
 
 Trên iOS dùng Safari **Share → Add to Home Screen**. Trên Android/Chrome chọn **Install app** khi trình duyệt hiện lời mời.
@@ -170,7 +204,6 @@ Firestore Rules chỉ cho hai UID trong `memberIds` đọc hoặc ghi các subco
 npm run typecheck
 npm run lint
 npm run build
-cd functions && npm run build
 ```
 
 Timeline và khu Locket đôi tại `/locket` đã được triển khai. Locket đôi hỗ trợ upload tối đa 6 ảnh mỗi lượt, reaction theo người dùng, reply theo ảnh và chat realtime. Bucket list, Bản đồ, Hộp thư tương lai và Playlist vẫn là các phần tiếp theo.

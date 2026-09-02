@@ -12,9 +12,9 @@ export function MemoryDetailModal({ memory, onClose }: { memory: Memory | null; 
       {memory && (
         <motion.div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-[#3e302a]/55 p-3 backdrop-blur-md sm:items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-labelledby="memory-detail-title" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
           <motion.article className="safe-bottom my-auto max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-[2rem] bg-[#fff8f0] shadow-2xl" initial={{ y: 70, scale: 0.96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 70, opacity: 0 }}>
-            <div className="relative aspect-[4/3] overflow-hidden rounded-t-[2rem] bg-[#eadbd0]">
+            <div className="relative overflow-hidden rounded-t-[2rem] bg-[#eadbd0]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={memory.imageUrl} alt={memory.title} className="size-full object-cover" />
+              <img src={memory.imageUrl} alt={memory.title} className="h-auto max-h-[72dvh] w-full object-contain" />
               <button className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/85 shadow-soft backdrop-blur" type="button" onClick={onClose} aria-label="Đóng"><X className="size-5" /></button>
             </div>
             <div className="p-6 sm:p-8">

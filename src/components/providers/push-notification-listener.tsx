@@ -7,6 +7,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
 import { registerForPushNotifications } from "@/lib/fcm";
 import { db, firebaseApp } from "@/lib/firebase";
+import { flushNotificationQueue } from "@/lib/notification-client";
 
 async function showSystemNotification(title: string, body: string, url: string, tag: string) {
   const registration = await navigator.serviceWorker.getRegistration("/firebase-cloud-messaging-push-scope")
@@ -24,6 +25,14 @@ async function showSystemNotification(title: string, body: string, url: string, 
 export function PushNotificationListener() {
   const { user } = useAuth();
   const { couple } = useCoupleSpace();
+
+  useEffect(() => {
+    if (!user) return;
+    void flushNotificationQueue(user);
+    const flush = () => void flushNotificationQueue(user);
+    window.addEventListener("online", flush);
+    return () => window.removeEventListener("online", flush);
+  }, [user]);
 
   useEffect(() => {
     if (!user || typeof Notification === "undefined" || Notification.permission !== "granted") return;
@@ -62,7 +71,7 @@ export function PushNotificationListener() {
     const database = db;
     const subscriptions: Array<() => void> = [];
 
-    function watch(collectionName: string, notify: (data: Record<string, unknown>) => { title: string; body: string; url: string } | null) {
+    function watch(collectionName: string, type: string, notify: (data: Record<string, unknown>) => { title: string; body: string; url: string } | null) {
       let initialSnapshot = true;
       const recent = query(collection(database, "couples", couple!.id, collectionName), orderBy("createdAt", "desc"), limit(1));
       subscriptions.push(onSnapshot(recent, (snapshot) => {
@@ -72,27 +81,27 @@ export function PushNotificationListener() {
         }
         snapshot.docChanges().filter((change) => change.type === "added").forEach((change) => {
           const content = notify(change.doc.data());
-          if (content) showSystemNotification(content.title, content.body, content.url, `${collectionName}-${change.doc.id}`).catch(() => undefined);
+          if (content) showSystemNotification(content.title, content.body, content.url, `${type}-${change.doc.id}`).catch(() => undefined);
         });
       }));
     }
 
-    watch("locketMessages", (data) => data.senderId === user.uid ? null : ({
+    watch("locketMessages", "message", (data) => data.senderId === user.uid ? null : ({
       title: `Tin nhắn từ ${String(data.senderName || "người thương")} 💌`,
       body: String(data.text || "Bạn có tin nhắn mới.").slice(0, 160),
       url: "/chat",
     }));
-    watch("locketPosts", (data) => data.uploaderId === user.uid ? null : ({
+    watch("locketPosts", "locket", (data) => data.uploaderId === user.uid ? null : ({
       title: `${String(data.uploaderName || "Người thương")} vừa gửi Locket 📸`,
       body: String(data.caption || "Có một khoảnh khắc mới dành cho bạn."),
       url: "/locket",
     }));
-    watch("mediaMemories", (data) => data.uploaderId === user.uid ? null : ({
+    watch("mediaMemories", "memory", (data) => data.uploaderId === user.uid ? null : ({
       title: `${String(data.uploaderName || "Người thương")} vừa lưu một kỷ niệm ✨`,
       body: String(data.caption || (data.mediaType === "video" ? "Có một video mới trong album." : "Có một ảnh mới trong album.")),
       url: "/map",
     }));
-    watch("photos", (data) => data.uploaderId === user.uid ? null : ({
+    watch("photos", "photo", (data) => data.uploaderId === user.uid ? null : ({
       title: `${String(data.uploaderName || "Người thương")} vừa đổi ảnh chung 💗`,
       body: String(data.caption || "Mở Love Days để xem ngay nhé."),
       url: "/",
