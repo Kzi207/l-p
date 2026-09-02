@@ -112,22 +112,18 @@ export function MusicScreen() {
     setShowFavorites(false);
     if (next === searchTerm) setReloadKey((value) => value + 1);
     else setSearchTerm(next);
-    setSelected(null);
   }
 
   function clearSearch() {
     setQueryInput("");
     setSearchTerm("");
     setShowFavorites(false);
-    setSelected(null);
   }
 
   function selectSource(next: Source) {
     setShowFavorites(false);
     if (next === source) return;
     setSource(next);
-    setSelected(null);
-    setPlaying(false);
   }
 
   function selectTrack(track: Track) {
@@ -176,6 +172,58 @@ export function MusicScreen() {
     selectTrack(displayedTracks[nextIndex]);
   }
 
+  useEffect(() => {
+    if (!selected) return;
+
+    function handleShortcut(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName;
+      if (target?.isContentEditable || tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") return;
+
+      const audio = audioRef.current;
+      if (!audio) return;
+      const toggleKeys = ["Space", "KeyM", "KeyN", "KeyP", "MediaPlayPause", "MediaTrackNext", "MediaTrackPrevious"];
+      if (event.repeat && toggleKeys.includes(event.code)) return;
+
+      if (event.code === "Space" || event.code === "MediaPlayPause") {
+        event.preventDefault();
+        if (audio.paused) audio.play().catch(() => setPlaying(false));
+        else audio.pause();
+        return;
+      }
+      if (event.code === "KeyM") {
+        event.preventDefault();
+        audio.muted = !audio.muted;
+        return;
+      }
+      if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+        event.preventDefault();
+        const change = event.code === "ArrowLeft" ? -5 : 5;
+        const maximum = Number.isFinite(audio.duration) ? audio.duration : Number.MAX_SAFE_INTEGER;
+        audio.currentTime = Math.min(maximum, Math.max(0, audio.currentTime + change));
+        return;
+      }
+      if (event.code === "ArrowUp" || event.code === "ArrowDown") {
+        event.preventDefault();
+        const change = event.code === "ArrowUp" ? 0.1 : -0.1;
+        audio.volume = Math.min(1, Math.max(0, audio.volume + change));
+        if (audio.volume > 0) audio.muted = false;
+        return;
+      }
+      if (["KeyN", "KeyP", "MediaTrackNext", "MediaTrackPrevious"].includes(event.code) && displayedTracks.length > 0) {
+        event.preventDefault();
+        const direction = event.code === "KeyN" || event.code === "MediaTrackNext" ? 1 : -1;
+        const nextIndex = selectedIndex < 0 ? 0 : (selectedIndex + direction + displayedTracks.length) % displayedTracks.length;
+        setSelected(displayedTracks[nextIndex]);
+        setPlaying(true);
+        setPlaybackError("");
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [displayedTracks, selected, selectedIndex]);
+
   if (!user) return <LoginScreen />;
   if (coupleLoading) return <main className="grid min-h-dvh place-items-center"><LoaderCircle className="size-8 animate-spin text-[#d17485]" /></main>;
   if (!couple) return <PairingScreen user={user} />;
@@ -196,7 +244,7 @@ export function MusicScreen() {
         <div className="soft-card mt-4 grid grid-cols-3 gap-1 p-1.5">
           <button className={`min-h-11 rounded-2xl text-xs font-bold transition sm:text-sm ${!showFavorites && source === "youtube" ? "bg-[#ff8f9f] text-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => selectSource("youtube")}>YouTube</button>
           <button className={`min-h-11 rounded-2xl text-xs font-bold transition sm:text-sm ${!showFavorites && source === "soundcloud" ? "bg-[#f59a6c] text-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => selectSource("soundcloud")}>SoundCloud</button>
-          <button className={`flex min-h-11 items-center justify-center gap-1 rounded-2xl text-xs font-bold transition sm:text-sm ${showFavorites ? "bg-blush/60 shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => { setShowFavorites(true); setSelected(null); setPlaying(false); }}><Heart className={`size-4 ${showFavorites ? "fill-[#d36f80] text-[#d36f80]" : ""}`} />Yêu thích</button>
+          <button className={`flex min-h-11 items-center justify-center gap-1 rounded-2xl text-xs font-bold transition sm:text-sm ${showFavorites ? "bg-blush/60 shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setShowFavorites(true)}><Heart className={`size-4 ${showFavorites ? "fill-[#d36f80] text-[#d36f80]" : ""}`} />Yêu thích</button>
         </div>
 
         <div className="mt-7 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#aa7a83]">{showFavorites ? "Playlist chung realtime" : searchTerm ? "Kết quả tìm kiếm" : "Dành cho hai bạn"}</p><h2 className="font-display text-2xl font-extrabold">{showFavorites ? "Bài hai mình yêu thích" : searchTerm ? `“${searchTerm}”` : "Đang thịnh hành"}</h2></div>{!visibleLoading && <span className="rounded-full bg-blush/25 px-3 py-1 text-xs font-bold">{displayedTracks.length} bài</span>}</div>
@@ -212,7 +260,7 @@ export function MusicScreen() {
         })}</section>}
       </div>
 
-      {selected && <aside className="fixed inset-x-0 bottom-[6.7rem] z-20 px-4 sm:px-6" aria-label="Trình phát nhạc"><div className="app-frame rounded-[1.6rem] border border-white/80 bg-[#fffaf5]/95 p-3 shadow-[0_10px_35px_rgba(74,59,52,.22)] backdrop-blur-xl"><div className="flex items-center gap-2 sm:gap-3"><span className="size-12 shrink-0 overflow-hidden rounded-xl bg-[#eadbd0]">{selected.thumbnail ? <img className="size-full object-cover" src={selected.thumbnail} alt="" /> : <Disc3 className="m-3 size-6" />}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{selected.title}</p><p className="truncate text-[11px] text-[#8b756a]">{selected.artist}</p></div><a className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-white" href={trackDownloadUrl(selected)} download aria-label="Tải bài đang phát" title="Tải MP3"><Download className="size-4" /></a><button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(-1)} aria-label="Bài trước"><SkipBack className="size-4 fill-current" /></button><button className="grid size-11 shrink-0 place-items-center rounded-full bg-blush text-cocoa shadow-soft" type="button" onClick={togglePlayback} aria-label={playing ? "Tạm dừng" : "Phát nhạc"}>{playing ? <Pause className="size-5 fill-current" /> : <Play className="ml-0.5 size-5 fill-current" />}</button><button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(1)} aria-label="Bài tiếp theo"><SkipForward className="size-4 fill-current" /></button></div><audio ref={audioRef} className="mt-2 h-9 w-full" key={streamUrl} src={streamUrl} controls autoPlay onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => stepTrack(1)} onError={() => { setPlaying(false); setPlaybackError("Chưa thể phát bài này. Hãy thử lại hoặc chọn bài khác."); }} /></div></aside>}
+      {selected && <aside className="fixed inset-x-0 bottom-[6.7rem] z-20 px-4 sm:px-6" aria-label="Trình phát nhạc"><div className="app-frame rounded-[1.6rem] border border-white/80 bg-[#fffaf5]/95 p-3 shadow-[0_10px_35px_rgba(74,59,52,.22)] backdrop-blur-xl"><div className="flex items-center gap-2 sm:gap-3"><span className="size-12 shrink-0 overflow-hidden rounded-xl bg-[#eadbd0]">{selected.thumbnail ? <img className="size-full object-cover" src={selected.thumbnail} alt="" /> : <Disc3 className="m-3 size-6" />}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{selected.title}</p><p className="truncate text-[11px] text-[#8b756a]">{selected.artist}</p></div><a className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-white" href={trackDownloadUrl(selected)} download aria-label="Tải bài đang phát" title="Tải MP3"><Download className="size-4" /></a><button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(-1)} aria-label="Bài trước"><SkipBack className="size-4 fill-current" /></button><button className="grid size-11 shrink-0 place-items-center rounded-full bg-blush text-cocoa shadow-soft" type="button" onClick={togglePlayback} aria-label={playing ? "Tạm dừng" : "Phát nhạc"}>{playing ? <Pause className="size-5 fill-current" /> : <Play className="ml-0.5 size-5 fill-current" />}</button><button className="hidden size-8 place-items-center rounded-full sm:grid" type="button" onClick={() => stepTrack(1)} aria-label="Bài tiếp theo"><SkipForward className="size-4 fill-current" /></button></div><audio ref={audioRef} className="mt-2 h-9 w-full" key={streamUrl} src={streamUrl} controls autoPlay onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => stepTrack(1)} onError={() => { setPlaying(false); setPlaybackError("Chưa thể phát bài này. Hãy thử lại hoặc chọn bài khác."); }} /><p className="mt-1 hidden text-center text-[10px] text-[#9a857b] sm:block"><kbd className="font-semibold">Space</kbd> phát/dừng · <kbd className="font-semibold">M</kbd> tắt âm · <kbd className="font-semibold">← →</kbd> tua 5 giây · <kbd className="font-semibold">↑ ↓</kbd> âm lượng · <kbd className="font-semibold">P/N</kbd> đổi bài</p></div></aside>}
 
       <BottomNav />
     </main>
