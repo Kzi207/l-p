@@ -18,9 +18,49 @@ export function GlobalNotifications() {
   const [pushError, setPushError] = useState("");
 
   useEffect(() => {
-    if (typeof Notification === "undefined") setPushStatus("unsupported");
-    else if (Notification.permission === "granted") setPushStatus("granted");
-    else if (Notification.permission === "denied") setPushStatus("denied");
+    if (!user) return;
+    if (typeof Notification === "undefined") {
+      setPushStatus("unsupported");
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setPushStatus("denied");
+      return;
+    }
+    if (Notification.permission !== "granted") {
+      setPushStatus("idle");
+      return;
+    }
+
+    let active = true;
+    setPushStatus("loading");
+    setPushError("");
+    registerForPushNotifications(user.uid).then((status) => {
+      if (active) setPushStatus(status);
+    }).catch((caught) => {
+      if (!active) return;
+      setPushStatus("idle");
+      setPushError(caught instanceof Error ? caught.message : "Token thông báo đã mất. Hãy đăng ký lại.");
+    });
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    function restoreNotificationButton() {
+      if (!document.querySelector(".locket-chat-composer:focus-within")) {
+        document.body.classList.remove("locket-keyboard-open");
+      }
+    }
+    window.addEventListener("pageshow", restoreNotificationButton);
+    window.addEventListener("focus", restoreNotificationButton);
+    document.addEventListener("visibilitychange", restoreNotificationButton);
+    return () => {
+      window.removeEventListener("pageshow", restoreNotificationButton);
+      window.removeEventListener("focus", restoreNotificationButton);
+      document.removeEventListener("visibilitychange", restoreNotificationButton);
+    };
   }, []);
 
   async function enablePush() {
@@ -61,5 +101,4 @@ export function GlobalNotifications() {
     </>
   );
 }
-
 

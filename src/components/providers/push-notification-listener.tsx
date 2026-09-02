@@ -5,7 +5,6 @@ import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestor
 import { useEffect } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
-import { registerForPushNotifications } from "@/lib/fcm";
 import { db, firebaseApp } from "@/lib/firebase";
 import { flushNotificationQueue } from "@/lib/notification-client";
 
@@ -31,11 +30,6 @@ export function PushNotificationListener() {
     const flush = () => void flushNotificationQueue(user);
     window.addEventListener("online", flush);
     return () => window.removeEventListener("online", flush);
-  }, [user]);
-
-  useEffect(() => {
-    if (!user || typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    registerForPushNotifications(user.uid).catch(() => undefined);
   }, [user]);
 
   useEffect(() => {
