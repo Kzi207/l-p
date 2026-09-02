@@ -115,8 +115,17 @@ body.locket-keyboard-open {
 }
 
 body.locket-keyboard-open .bottom-nav,
-body.locket-keyboard-open .global-notifications-trigger {
+body.locket-keyboard-open .global-notifications-trigger,
+body.locket-keyboard-open .global-music-player {
   display: none;
+}
+
+body.music-player-active main {
+  padding-bottom: 13rem;
+}
+
+body.music-player-active .global-notifications-trigger {
+  bottom: 13.5rem;
 }
 
 body.locket-keyboard-open .locket-chat {

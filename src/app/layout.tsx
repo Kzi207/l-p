@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/providers/auth-provider";
 import { CoupleProvider } from "@/components/providers/couple-provider";
 import { PushNotificationListener } from "@/components/providers/push-notification-listener";
 import { GlobalNotifications } from "@/components/notifications/global-notifications";
+import { MusicPlayerProvider } from "@/components/providers/music-player-provider";
 import "./globals.css";
 
 const baloo = Baloo_2({ subsets: ["latin", "vietnamese"], variable: "--font-baloo", display: "swap" });
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="vi">
       <body className={`${baloo.variable} ${inter.variable} ${caveat.variable}`}>
-        <AuthProvider><CoupleProvider><PushNotificationListener /><GlobalNotifications />{children}</CoupleProvider></AuthProvider>
+        <AuthProvider><CoupleProvider><MusicPlayerProvider><PushNotificationListener /><GlobalNotifications />{children}</MusicPlayerProvider></CoupleProvider></AuthProvider>
       </body>
     </html>
   );
