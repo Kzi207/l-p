@@ -128,6 +128,7 @@ export function MediaMemoriesScreen() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [error, setError] = useState("");
+  const deepLinkHandledRef = useRef(false);
 
   useEffect(() => {
     if (!db || !couple) return;
@@ -141,6 +142,20 @@ export function MediaMemoriesScreen() {
       setError(`Không thể tải kỷ niệm (${caught.code}).`);
     });
   }, [couple]);
+
+  useEffect(() => {
+    if (deepLinkHandledRef.current || items.length === 0) return;
+    const memoryId = new URLSearchParams(window.location.search).get("memory");
+    if (!memoryId) {
+      deepLinkHandledRef.current = true;
+      return;
+    }
+    const memory = items.find((item) => item.id === memoryId);
+    if (memory) {
+      setSelected(memory);
+      deepLinkHandledRef.current = true;
+    }
+  }, [items]);
 
   function openEditor() {
     if (!selected || selected.uploaderId !== user?.uid) return;

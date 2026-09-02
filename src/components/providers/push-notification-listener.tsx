@@ -70,7 +70,7 @@ export function PushNotificationListener() {
     const database = db;
     const subscriptions: Array<() => void> = [];
 
-    function watch(collectionName: string, type: string, notify: (data: Record<string, unknown>) => { title: string; body: string; url: string } | null) {
+    function watch(collectionName: string, type: string, notify: (data: Record<string, unknown>, id: string) => { title: string; body: string; url: string } | null) {
       let initialSnapshot = true;
       const recent = query(collection(database, "couples", couple!.id, collectionName), orderBy("createdAt", "desc"), limit(1));
       subscriptions.push(onSnapshot(recent, (snapshot) => {
@@ -79,31 +79,31 @@ export function PushNotificationListener() {
           return;
         }
         snapshot.docChanges().filter((change) => change.type === "added").forEach((change) => {
-          const content = notify(change.doc.data());
+          const content = notify(change.doc.data(), change.doc.id);
           if (content) showSystemNotification(content.title, content.body, content.url, `${type}-${change.doc.id}`).catch(() => undefined);
         });
       }));
     }
 
-    watch("locketMessages", "message", (data) => data.senderId === user.uid ? null : ({
+    watch("locketMessages", "message", (data, id) => data.senderId === user.uid ? null : ({
       title: `Tin nhắn từ ${String(data.senderName || "người thương")} 💌`,
       body: String(data.text || "Bạn có tin nhắn mới.").slice(0, 160),
-      url: "/chat",
+      url: `/chat?message=${encodeURIComponent(id)}`,
     }));
-    watch("locketPosts", "locket", (data) => data.uploaderId === user.uid ? null : ({
+    watch("locketPosts", "locket", (data, id) => data.uploaderId === user.uid ? null : ({
       title: `${String(data.uploaderName || "Người thương")} vừa gửi Locket 📸`,
       body: String(data.caption || "Có một khoảnh khắc mới dành cho bạn."),
-      url: "/locket",
+      url: `/locket?post=${encodeURIComponent(id)}`,
     }));
-    watch("mediaMemories", "memory", (data) => data.uploaderId === user.uid ? null : ({
+    watch("mediaMemories", "memory", (data, id) => data.uploaderId === user.uid ? null : ({
       title: `${String(data.uploaderName || "Người thương")} vừa lưu một kỷ niệm ✨`,
       body: String(data.caption || (data.mediaType === "video" ? "Có một video mới trong album." : "Có một ảnh mới trong album.")),
-      url: "/map",
+      url: `/map?memory=${encodeURIComponent(id)}`,
     }));
-    watch("photos", "photo", (data) => data.uploaderId === user.uid ? null : ({
+    watch("photos", "photo", (data, id) => data.uploaderId === user.uid ? null : ({
       title: `${String(data.uploaderName || "Người thương")} vừa đổi ảnh chung 💗`,
       body: String(data.caption || "Mở Love Days để xem ngay nhé."),
-      url: "/",
+      url: `/?photo=${encodeURIComponent(id)}`,
     }));
 
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());

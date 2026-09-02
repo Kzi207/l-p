@@ -2,11 +2,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { AnimatePresence, motion } from "framer-motion";
-import type { User } from "firebase/auth";
+import { signOut, type User } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
-import { Check, LoaderCircle, UserRound, X } from "lucide-react";
+import { Check, LoaderCircle, LogOut, UserRound, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import type { UserDocument } from "@/types/firestore";
 
 export function ProfileModal({ open, user, profile, partner, onClose }: { open: boolean; user: User; profile: UserDocument | null; partner: UserDocument | null; onClose: () => void }) {
@@ -59,8 +59,15 @@ export function ProfileModal({ open, user, profile, partner, onClose }: { open: 
           </div>
           {error && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <button className="primary-button mt-5 w-full" disabled={saving} type="submit">{saving ? <LoaderCircle className="size-5 animate-spin" /> : <Check className="size-5" />}{saving ? "Đang lưu..." : "Lưu hồ sơ của tôi"}</button>
+          <div className="mt-4 flex items-center justify-between border-t border-[#eadbd4] pt-4">
+            <button className="secondary-button text-red-700 hover:bg-red-50" type="button" onClick={() => auth && signOut(auth)}>
+              <LogOut className="size-4" />
+              Đăng xuất
+            </button>
+          </div>
         </motion.form>
       </motion.div>}
     </AnimatePresence>
   );
 }
+

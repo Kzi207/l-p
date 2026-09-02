@@ -162,6 +162,13 @@ export function ProfileScreen() {
           <button className="secondary-button mt-4 w-full" type="button" disabled={notificationStatus === "loading" || notificationStatus === "granted"} onClick={enableNotifications}><Bell className="size-4" />{notificationStatus === "granted" ? "Đã bật thông báo" : notificationStatus === "loading" ? "Đang bật..." : "Bật thông báo ảnh và tin nhắn"}</button>
           {(notificationStatus === "denied" || notificationStatus === "unsupported") && <p className="mt-2 text-xs text-red-700">Trình duyệt chưa cho phép hoặc không hỗ trợ thông báo.</p>}
         </section>
+
+        <section className="soft-card mt-5 p-5 text-center">
+          <button className="secondary-button w-full justify-center text-red-700 hover:bg-red-50" type="button" onClick={() => auth && signOut(auth)}>
+            <LogOut className="size-4" />
+            Đăng xuất khỏi tài khoản
+          </button>
+        </section>
       </div>
       <BottomNav />
     </main>

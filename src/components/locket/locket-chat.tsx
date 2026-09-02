@@ -19,6 +19,7 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [pendingRecall, setPendingRecall] = useState<Message | null>(null);
+  const [focusedMessageId, setFocusedMessageId] = useState("");
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +37,15 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  useEffect(() => {
+    setFocusedMessageId(new URLSearchParams(window.location.search).get("message") || "");
+  }, []);
+
+  useEffect(() => {
+    if (!focusedMessageId || messages.length === 0) return;
+    document.getElementById(`message-${focusedMessageId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusedMessageId, messages]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -122,7 +132,14 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
         {messages.length === 0 && <div className="grid min-h-72 place-items-center text-center"><div><MessageCircleHeart className="mx-auto size-12 text-blush" /><p className="mt-3 font-handwritten text-xl text-[#a56f78]">Gửi lời nhắn đầu tiên nhé</p></div></div>}
         {messages.map((message) => {
           const mine = message.senderId === user.uid;
-          return <div className={`group flex items-center gap-2 ${mine ? "flex-row-reverse" : ""}`} key={message.id}>{message.senderPhotoUrl ? <span className="size-9 shrink-0 overflow-hidden rounded-full">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={message.senderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blush/45 text-xs font-bold">{message.senderName.slice(0, 1)}</span>}<div className={`max-w-[78%] rounded-[1.2rem] px-4 py-2.5 text-sm leading-5 ${mine ? "rounded-tr-sm bg-blush/70" : "rounded-tl-sm bg-white shadow-sm"}`}><p>{message.text}</p><span className="mt-1 block text-[9px] text-[#8d756b]">{message.senderName}</span></div>{mine && <button className="grid size-8 shrink-0 place-items-center rounded-full text-[#a47c75] opacity-70 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" type="button" disabled={deletingId === message.id} onClick={() => setPendingRecall(message)} aria-label="Thu hồi tin nhắn" title="Thu hồi">{deletingId === message.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}</button>}</div>;
+          const focused = focusedMessageId === message.id;
+          return (
+            <div id={`message-${message.id}`} className={`group flex scroll-m-28 items-center gap-2 rounded-2xl transition ${mine ? "flex-row-reverse" : ""} ${focused ? "bg-blush/15 ring-2 ring-[#df8292] ring-offset-4 ring-offset-[#fffaf5]" : ""}`} key={message.id}>
+              {message.senderPhotoUrl ? <span className="size-9 shrink-0 overflow-hidden rounded-full"><img src={message.senderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blush/45 text-xs font-bold">{message.senderName.slice(0, 1)}</span>}
+              <div className={`max-w-[78%] rounded-[1.2rem] px-4 py-2.5 text-sm leading-5 ${mine ? "rounded-tr-sm bg-blush/70" : "rounded-tl-sm bg-white shadow-sm"}`}><p>{message.text}</p><span className="mt-1 block text-[9px] text-[#8d756b]">{message.senderName}</span></div>
+              {mine && <button className="grid size-8 shrink-0 place-items-center rounded-full text-[#a47c75] opacity-70 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" type="button" disabled={deletingId === message.id} onClick={() => setPendingRecall(message)} aria-label="Thu hồi tin nhắn" title="Thu hồi">{deletingId === message.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}</button>}
+            </div>
+          );
         })}
         <div className="locket-chat-end" ref={endRef} />
       </div>

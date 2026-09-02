@@ -21,7 +21,7 @@ type Post = LocketPostDocument & { id: string };
 type Tab = "feed" | "chat";
 const EMOJIS = ["❤️", "🥰", "😂", "😮", "😭", "😘"];
 
-function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post: Post; userId: string; onReply: () => void }) {
+function PostCard({ coupleId, post, userId, focused, onReply }: { coupleId: string; post: Post; userId: string; focused: boolean; onReply: () => void }) {
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -54,7 +54,7 @@ function PostCard({ coupleId, post, userId, onReply }: { coupleId: string; post:
   const createdAt = post.createdAt?.toDate?.();
 
   return (
-    <motion.article className="soft-card overflow-hidden" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}>
+    <motion.article id={`locket-${post.id}`} className={`soft-card scroll-m-24 overflow-hidden transition ${focused ? "ring-4 ring-[#df8292] ring-offset-4 ring-offset-[#fff8f0]" : ""}`} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}>
       <div className="flex items-center gap-3 px-4 py-3">
         {post.uploaderPhotoUrl ? <span className="size-10 overflow-hidden rounded-full bg-blush/30">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={post.uploaderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-10 place-items-center rounded-full bg-blush/45 font-bold">{post.uploaderName.slice(0, 1)}</span>}
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{post.uploaderName}</p><p className="text-[10px] text-[#9b857b]">{createdAt ? createdAt.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "Vừa đăng"}</p></div>
@@ -86,6 +86,7 @@ export function LocketScreen({ initialTab = "feed" }: { initialTab?: Tab }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [initialFiles, setInitialFiles] = useState<File[]>([]);
   const [threadPost, setThreadPost] = useState<Post | null>(null);
+  const [focusedPostId, setFocusedPostId] = useState("");
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
@@ -109,6 +110,15 @@ export function LocketScreen({ initialTab = "feed" }: { initialTab?: Tab }) {
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
+
+  useEffect(() => {
+    setFocusedPostId(new URLSearchParams(window.location.search).get("post") || "");
+  }, []);
+
+  useEffect(() => {
+    if (!focusedPostId || posts.length === 0) return;
+    document.getElementById(`locket-${focusedPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusedPostId, posts]);
 
   useEffect(() => {
     if (tab === "chat") stopCamera();
@@ -215,7 +225,7 @@ export function LocketScreen({ initialTab = "feed" }: { initialTab?: Tab }) {
           ) : posts.length === 0 ? (
             <div className="soft-card mt-6 flex min-h-72 flex-col items-center justify-center px-7 text-center"><ImagePlus className="size-12 text-[#d48a96]" /><h2 className="mt-4 font-display text-2xl font-bold">Chưa có ảnh nào</h2><p className="mt-2 max-w-sm text-sm leading-6 text-[#806e65]">Chụp ảnh hoặc tải ảnh từ máy để gửi Locket đầu tiên.</p></div>
           ) : (
-            <div className="mt-6 space-y-6">{posts.map((post) => <PostCard coupleId={couple.id} key={post.id} post={post} userId={user.uid} onReply={() => setThreadPost(post)} />)}</div>
+            <div className="mt-6 space-y-6">{posts.map((post) => <PostCard coupleId={couple.id} key={post.id} post={post} userId={user.uid} focused={focusedPostId === post.id} onReply={() => setThreadPost(post)} />)}</div>
           )}
         </>}
       </div>

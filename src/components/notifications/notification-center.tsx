@@ -88,7 +88,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
         setMessages(snapshot.docs.flatMap((item) => {
           const data = item.data() as LocketMessageDocument;
           if (data.senderId === user.uid) return [];
-          return [{ id: `message:${item.id}`, kind: "message" as const, title: `${data.senderName || "Người thương"} đã nhắn bạn`, body: data.text || "Tin nhắn mới", href: "/chat", createdAt: data.createdAt || null }];
+          return [{ id: `message:${item.id}`, kind: "message" as const, title: `${data.senderName || "Người thương"} đã nhắn bạn`, body: data.text || "Tin nhắn mới", href: `/chat?message=${encodeURIComponent(item.id)}`, createdAt: data.createdAt || null }];
         }));
         setLoading(false);
       }, reportError),
@@ -96,7 +96,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
         setLockets(snapshot.docs.flatMap((item) => {
           const data = item.data() as LocketPostDocument;
           if (data.uploaderId === user.uid) return [];
-          return [{ id: `locket:${item.id}`, kind: "locket" as const, title: `${data.uploaderName || "Người thương"} vừa gửi một Locket`, body: data.caption || "Chạm để xem khoảnh khắc mới", href: "/locket", imageUrl: data.imageUrl, createdAt: data.createdAt || null }];
+          return [{ id: `locket:${item.id}`, kind: "locket" as const, title: `${data.uploaderName || "Người thương"} vừa gửi một Locket`, body: data.caption || "Chạm để xem khoảnh khắc mới", href: `/locket?post=${encodeURIComponent(item.id)}`, imageUrl: data.imageUrl, createdAt: data.createdAt || null }];
         }));
         setLoading(false);
       }, reportError),
@@ -104,7 +104,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
         setMemories(snapshot.docs.flatMap((item) => {
           const data = item.data() as MediaMemoryDocument;
           if (data.uploaderId === user.uid) return [];
-          return [{ id: `memory:${item.id}`, kind: "memory" as const, title: `${data.uploaderName || "Người thương"} đã thêm kỷ niệm`, body: data.caption || (data.mediaType === "video" ? "Một video kỷ niệm mới" : "Một ảnh kỷ niệm mới"), href: "/map", imageUrl: data.mediaType === "image" ? data.mediaUrl : undefined, createdAt: data.createdAt || null }];
+          return [{ id: `memory:${item.id}`, kind: "memory" as const, title: `${data.uploaderName || "Người thương"} đã thêm kỷ niệm`, body: data.caption || (data.mediaType === "video" ? "Một video kỷ niệm mới" : "Một ảnh kỷ niệm mới"), href: `/map?memory=${encodeURIComponent(item.id)}`, imageUrl: data.mediaType === "image" ? data.mediaUrl : undefined, createdAt: data.createdAt || null }];
         }));
         setLoading(false);
       }, reportError),
@@ -112,7 +112,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
         setPhotos(snapshot.docs.flatMap((item) => {
           const data = item.data() as PhotoDocument;
           if (data.uploaderId === user.uid) return [];
-          return [{ id: `photo:${item.id}`, kind: "photo" as const, title: `${data.uploaderName || "Người thương"} đã đổi ảnh chung`, body: data.caption || "Ảnh ở trang chủ vừa được cập nhật", href: "/", imageUrl: data.imageUrl, createdAt: data.createdAt || null }];
+          return [{ id: `photo:${item.id}`, kind: "photo" as const, title: `${data.uploaderName || "Người thương"} đã đổi ảnh chung`, body: data.caption || "Ảnh ở trang chủ vừa được cập nhật", href: `/?photo=${encodeURIComponent(item.id)}`, imageUrl: data.imageUrl, createdAt: data.createdAt || null }];
         }));
         setLoading(false);
       }, reportError),
@@ -176,7 +176,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
               {items.map((item) => {
                 const Icon = iconByKind[item.kind];
                 const unread = !readIds.has(item.id);
-                return <Link key={item.id} href={item.href} onClick={() => markRead(item.id)} className={`relative flex items-center gap-3 rounded-2xl p-3 transition ${unread ? "bg-blush/20" : "bg-white/45"}`}>
+                return <Link key={item.id} href={item.href} onClick={() => { markRead(item.id); onClose(); }} className={`relative flex items-center gap-3 rounded-2xl p-3 transition ${unread ? "bg-blush/20" : "bg-white/45"}`}>
                   <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/80">{item.imageUrl ? <img className="size-full object-cover" src={item.imageUrl} alt="" /> : <Icon className="size-5 text-[#ce7787]" />}</span>
                   <span className="min-w-0 flex-1"><span className="flex items-start justify-between gap-2"><span className="line-clamp-1 text-sm font-bold">{item.title}</span><span className="shrink-0 text-[10px] text-[#98757c]">{formatTime(item.createdAt)}</span></span><span className="mt-0.5 block line-clamp-2 text-xs text-[#806e65]">{item.body}</span></span>
                   {unread && <span className="absolute right-2 top-2 size-2 rounded-full bg-[#e15e75]" aria-label="Chưa đọc" />}

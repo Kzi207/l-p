@@ -1,10 +1,9 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { signOut, type User } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
-import { LogOut, Music2, RefreshCw } from "lucide-react";
-import Link from "next/link";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CoupleSetup } from "@/components/home/couple-setup";
 import { LocketPhoto } from "@/components/home/locket-photo";
@@ -14,7 +13,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { PairingScreen } from "@/components/pairing/pairing-screen";
 import { ProfileModal } from "@/components/profile/profile-modal";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import type { PhotoDocument } from "@/types/firestore";
 
 export function HomeScreen({ user }: { user: User }) {
@@ -52,11 +51,6 @@ export function HomeScreen({ user }: { user: User }) {
       {photo && <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] scale-110 bg-cover bg-center opacity-20 blur-3xl" style={{ backgroundImage: `linear-gradient(rgba(255,248,240,.25), #fff8f0 92%), url(${photo.imageUrl})` }} />}
       <header className="app-frame relative z-20 flex items-center justify-between pt-4">
         <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-full bg-blush/55 font-display text-lg font-bold shadow-soft">♥</span><span className="font-display text-lg font-bold">Love Days</span></div>
-        <div className="flex gap-2">
-          <Link className="grid size-10 place-items-center rounded-full bg-white/60 shadow-soft" href="/music" aria-label="Mở trang nghe nhạc" title="Nghe nhạc"><Music2 className="size-4 text-[#d36f80]" /></Link>
-          <button className="grid size-10 place-items-center overflow-hidden rounded-full bg-blush/35 shadow-soft" type="button" onClick={() => setProfileOpen(true)} aria-label="Mở hồ sơ cá nhân">{profile?.photoURL ? <>{/* eslint-disable-next-line @next/next/no-img-element */}<img className="size-full object-cover" src={profile.photoURL} alt="" /></> : <span className="font-bold">{(profile?.nickname || profile?.displayName || "B").slice(0, 1)}</span>}</button>
-          <button className="grid size-10 place-items-center rounded-full bg-white/60 shadow-soft" type="button" onClick={() => auth && signOut(auth)} aria-label="Đăng xuất"><LogOut className="size-4" /></button>
-        </div>
       </header>
 
       {(dataError || coupleError) && <p className="relative z-20 mx-auto mt-3 max-w-md rounded-2xl bg-red-50/90 px-4 py-3 text-center text-sm text-red-700">{dataError || coupleError}<button className="ml-2 underline" type="button" onClick={() => window.location.reload()}><RefreshCw className="inline size-3" /> thử lại</button></p>}
@@ -68,3 +62,5 @@ export function HomeScreen({ user }: { user: User }) {
     </main>
   );
 }
+
+

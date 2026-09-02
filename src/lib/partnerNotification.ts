@@ -15,6 +15,12 @@ interface PartnerNotificationOptions {
   content: (data: DocumentData) => { title: string; body: string };
 }
 
+function deepLink(route: string, type: PartnerNotificationOptions["type"], itemId: string) {
+  const parameter = type === "message" ? "message" : type === "locket" ? "post" : type === "memory" ? "memory" : "photo";
+  const separator = route.includes("?") ? "&" : "?";
+  return `${route}${separator}${parameter}=${encodeURIComponent(itemId)}`;
+}
+
 /** Kiểm tra user, couple và document trước khi gửi để không thể giả mạo thông báo. */
 export async function notifyPartnerFromDocument(options: PartnerNotificationOptions) {
   try {
@@ -66,7 +72,7 @@ export async function notifyPartnerFromDocument(options: PartnerNotificationOpti
 
     try {
       const content = options.content(item.data() || {});
-      const result = await sendPushToUser(recipientUid, content.title, content.body, options.route, {
+      const result = await sendPushToUser(recipientUid, content.title, content.body, deepLink(options.route, options.type, options.itemId), {
         type: options.type,
         itemId: options.itemId,
       });
