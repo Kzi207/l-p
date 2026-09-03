@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveSoundCloudAudio } from "@/lib/soundcloud";
+import { createYouTubeMp3Stream } from "@/lib/youtube";
 
-const API_BASE = "https://khanhduy.id.vn/api/v1";
 const ALLOWED_TRACK_HOSTS = new Set(["youtu.be", "youtube.com", "www.youtube.com", "soundcloud.com", "www.soundcloud.com"]);
 
 export const dynamic = "force-dynamic";
@@ -29,31 +30,29 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const resolver = new URL(`${API_BASE}/${source}`);
-    resolver.searchParams.set("download", parsedTrack.toString());
-    resolver.searchParams.set("type", "mp3");
-    const resolvedResponse = await fetch(resolver, { cache: "no-store", signal: AbortSignal.timeout(45_000) });
-    if (!resolvedResponse.ok) throw new Error("Resolve failed");
-    const resolved = await resolvedResponse.json() as { status?: boolean; download_url?: string };
-    if (!resolved.status || !resolved.download_url) throw new Error("No download URL");
+    if (source === "soundcloud") {
+      const audio = await resolveSoundCloudAudio(parsedTrack.toString());
+      const audioResponse = await fetch(audio.url, { cache: "no-store", signal: AbortSignal.timeout(60_000) });
+      if (!audioResponse.ok || !audioResponse.body) throw new Error("SoundCloud download failed");
+      const headers = new Headers({
+        "Content-Type": audioResponse.headers.get("content-type") || audio.mimeType,
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${title}.mp3`)}`,
+        "Cache-Control": "private, no-store",
+      });
+      const contentLength = audioResponse.headers.get("content-length");
+      if (contentLength) headers.set("Content-Length", contentLength);
+      return new NextResponse(audioResponse.body, { status: 200, headers });
+    }
 
-    const audioUrl = new URL(resolved.download_url);
-    if (audioUrl.hostname !== "khanhduy.id.vn") throw new Error("Unexpected audio host");
-    // download_url chứa dl=2 và header attachment. Redirect giúp file lớn
-    // không bị ngắt vì giới hạn thời gian chạy của server Next.js.
-    if (audioUrl.protocol === "https:") return NextResponse.redirect(audioUrl, 307);
-
-    const audioResponse = await fetch(audioUrl, { cache: "no-store" });
-    if (!audioResponse.ok) throw new Error("Download failed");
-
-    const headers = new Headers({
-      "Content-Type": audioResponse.headers.get("content-type") || "audio/mpeg",
-      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${title}.mp3`)}`,
-      "Cache-Control": "private, no-store",
+    const mp3 = await createYouTubeMp3Stream(parsedTrack.toString());
+    request.signal.addEventListener("abort", () => mp3.process.kill(), { once: true });
+    return new NextResponse(mp3.stream, {
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${title}.mp3`)}`,
+        "Cache-Control": "private, no-store",
+      },
     });
-    const contentLength = audioResponse.headers.get("content-length");
-    if (contentLength) headers.set("Content-Length", contentLength);
-    return new NextResponse(audioResponse.body, { status: 200, headers });
   } catch {
     return NextResponse.json({ error: "Chưa thể tải bài hát này. Hãy thử lại sau." }, { status: 502 });
   }
