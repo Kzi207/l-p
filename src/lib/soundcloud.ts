@@ -1,4 +1,4 @@
-const clientId = process.env.SOUNDCLOUD_CLIENT_ID;
+const clientId = "Pb72ranhoyt6gw7hM7TkzUItXlMWSNSo";
 
 function getClientId() {
   if (!clientId) throw new Error("Thiếu SOUNDCLOUD_CLIENT_ID");
