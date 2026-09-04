@@ -3,13 +3,15 @@
 
 import { signOut } from "firebase/auth";
 import { doc, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
-import { Bell, Check, Copy, Heart, LoaderCircle, LogOut, Unlink, UserRound } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import imageCompression from "browser-image-compression";
+import { Bell, Camera, Check, Copy, Heart, LoaderCircle, LogOut, Unlink, UserRound } from "lucide-react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { PairingScreen } from "@/components/pairing/pairing-screen";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 import { registerForPushNotifications } from "@/lib/fcm";
 import { auth, db } from "@/lib/firebase";
 
@@ -21,12 +23,14 @@ export function ProfileScreen() {
   const [birthday, setBirthday] = useState("");
   const [bio, setBio] = useState("");
   const [photoURL, setPhotoURL] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [changingPartner, setChangingPartner] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [notificationStatus, setNotificationStatus] = useState<"idle" | "loading" | "granted" | "denied" | "unsupported">("idle");
   const [notificationError, setNotificationError] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -68,6 +72,39 @@ export function ProfileScreen() {
       setError(caught instanceof Error ? caught.message : "Chưa thể lưu hồ sơ.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function changeAvatar(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !db) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Vui lòng chọn một file ảnh.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError("Ảnh đại diện không được lớn hơn 15 MB.");
+      return;
+    }
+
+    setAvatarUploading(true);
+    setError("");
+    setMessage("");
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      });
+      const upload = await uploadToCloudinary(compressed, "love-days/avatars");
+      await updateDoc(doc(db, "users", userId), { photoURL: upload.secure_url });
+      setPhotoURL(upload.secure_url);
+      setMessage("Đã cập nhật ảnh đại diện.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Chưa thể cập nhật ảnh đại diện.");
+    } finally {
+      setAvatarUploading(false);
     }
   }
 
@@ -133,9 +170,8 @@ export function ProfileScreen() {
   return (
     <main className="min-h-dvh px-4 pb-28 pt-7 sm:px-6">
       <div className="app-frame">
-        <header className="flex items-center justify-between gap-3">
+        <header>
           <div><p className="font-handwritten text-xl text-[#a56f78]">Góc riêng của bạn</p><h1 className="font-display text-3xl font-extrabold">Cá nhân</h1></div>
-          <button className="secondary-button px-3" type="button" onClick={() => auth && signOut(auth)}><LogOut className="size-4" />Đăng xuất</button>
         </header>
 
         {partner && <section className="soft-card mt-6 p-4">
@@ -147,9 +183,14 @@ export function ProfileScreen() {
         </section>}
 
         <form className="soft-card mt-5 p-5 sm:p-6" onSubmit={saveProfile}>
-          <div className="flex items-center gap-3">
-            <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full bg-blush/30">{photoURL ? <img className="size-full object-cover" src={photoURL} alt="Ảnh đại diện" /> : <UserRound className="size-6 text-[#ce7787]" />}</span>
-            <div><h2 className="font-display text-xl font-bold">Thông tin của tôi</h2><p className="text-xs text-[#8b756a]">Chỉ bạn và người đã ghép đôi mới xem được.</p></div>
+          <div className="flex flex-col items-center text-center">
+            <input ref={avatarInputRef} className="sr-only" type="file" accept="image/*" onChange={changeAvatar} disabled={avatarUploading} aria-label="Chọn ảnh đại diện từ máy" />
+            <button className="group relative grid size-28 shrink-0 place-items-center overflow-visible rounded-full bg-blush/30 ring-4 ring-white shadow-soft transition active:scale-95 disabled:cursor-wait sm:size-32" type="button" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()} aria-label="Thay đổi ảnh đại diện">
+              <span className="size-full overflow-hidden rounded-full">{photoURL ? <img className="size-full object-cover transition group-hover:scale-105" src={photoURL} alt="Ảnh đại diện" /> : <span className="grid size-full place-items-center"><UserRound className="size-12 text-[#ce7787]" /></span>}</span>
+              <span className="absolute bottom-0 right-0 grid size-10 place-items-center rounded-full border-2 border-white bg-[#ef8fa0] text-white shadow-soft">{avatarUploading ? <LoaderCircle className="size-5 animate-spin" /> : <Camera className="size-5" />}</span>
+            </button>
+            <h2 className="mt-4 font-display text-xl font-bold">Thông tin của tôi</h2>
+            <p className="mt-1 text-xs text-[#8b756a]">Chạm vào ảnh để chọn ảnh đại diện từ máy.</p>
           </div>
 
           <div className="mt-5 space-y-3">
@@ -157,12 +198,11 @@ export function ProfileScreen() {
             <label className="block text-sm font-semibold">Tên gọi thân mật<input className="soft-input mt-1.5" maxLength={30} value={nickname} onChange={(event) => setNickname(event.target.value)} /></label>
             <label className="block text-sm font-semibold">Ngày sinh<input className="soft-input mt-1.5" type="date" value={birthday} onChange={(event) => setBirthday(event.target.value)} /></label>
             <label className="block text-sm font-semibold">Giới thiệu<textarea className="soft-input mt-1.5 min-h-20 resize-none" maxLength={160} value={bio} onChange={(event) => setBio(event.target.value)} /></label>
-            <label className="block text-sm font-semibold">Link ảnh đại diện<input className="soft-input mt-1.5" type="url" value={photoURL} onChange={(event) => setPhotoURL(event.target.value)} /></label>
           </div>
 
           {(error || profileError) && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{error || profileError}</p>}
           {message && <p className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
-          <button className="primary-button mt-5 w-full" disabled={saving} type="submit">{saving ? <LoaderCircle className="size-5 animate-spin" /> : <Check className="size-5" />}{saving ? "Đang lưu..." : "Lưu hồ sơ"}</button>
+          <button className="primary-button mt-5 w-full" disabled={saving || avatarUploading} type="submit">{saving ? <LoaderCircle className="size-5 animate-spin" /> : <Check className="size-5" />}{saving ? "Đang lưu..." : "Lưu hồ sơ"}</button>
         </form>
 
         <section className="soft-card mt-5 p-5">

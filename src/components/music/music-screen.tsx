@@ -13,8 +13,6 @@ import { useMusicPlayer, type MusicSource, type MusicTrack } from "@/components/
 import { db } from "@/lib/firebase";
 import type { MusicFavoriteDocument } from "@/types/firestore";
 
-type Source = MusicSource;
-
 interface RawTrack {
   id: string;
   title: string;
@@ -45,7 +43,7 @@ export function MusicScreen() {
   const { user } = useAuth();
   const { couple, profile, loading: coupleLoading } = useCoupleSpace();
   const { selected, playing, playbackError, playTrack } = useMusicPlayer();
-  const [source, setSource] = useState<Source>("youtube");
+  const source: MusicSource = "soundcloud";
   const [showFavorites, setShowFavorites] = useState(false);
   const [queryInput, setQueryInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,9 +93,10 @@ export function MusicScreen() {
       return;
     }
     return onSnapshot(collection(db, "couples", couple.id, "musicFavorites"), (snapshot) => {
-      const next = snapshot.docs.map((snapshotDoc) => {
+      const next = snapshot.docs.flatMap((snapshotDoc) => {
         const item = snapshotDoc.data() as MusicFavoriteDocument;
-        return { favoriteId: snapshotDoc.id, id: item.trackId, title: item.title, artist: item.artist, duration: item.duration, thumbnail: item.thumbnail, url: item.url, source: item.source, addedBy: item.addedBy, addedByName: item.addedByName } satisfies FavoriteTrack;
+        if (item.source !== "soundcloud") return [];
+        return [{ favoriteId: snapshotDoc.id, id: item.trackId, title: item.title, artist: item.artist, duration: item.duration, thumbnail: item.thumbnail, url: item.url, source: item.source, addedBy: item.addedBy, addedByName: item.addedByName } satisfies FavoriteTrack];
       });
       next.sort((a, b) => a.title.localeCompare(b.title, "vi"));
       setFavorites(next);
@@ -120,12 +119,6 @@ export function MusicScreen() {
     setQueryInput("");
     setSearchTerm("");
     setShowFavorites(false);
-  }
-
-  function selectSource(next: Source) {
-    setShowFavorites(false);
-    if (next === source) return;
-    setSource(next);
   }
 
   function selectTrack(track: Track) {
@@ -176,9 +169,8 @@ export function MusicScreen() {
           <button className="primary-button shrink-0 px-4" type="submit"><Search className="size-5" /><span className="hidden sm:inline">Tìm</span></button>
         </form>
 
-        <div className="soft-card mt-4 grid grid-cols-3 gap-1 p-1.5">
-          <button className={`min-h-11 rounded-2xl text-xs font-bold transition sm:text-sm ${!showFavorites && source === "youtube" ? "bg-[#ff8f9f] text-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => selectSource("youtube")}>YouTube</button>
-          <button className={`min-h-11 rounded-2xl text-xs font-bold transition sm:text-sm ${!showFavorites && source === "soundcloud" ? "bg-[#f59a6c] text-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => selectSource("soundcloud")}>SoundCloud</button>
+        <div className="soft-card mt-4 grid grid-cols-2 gap-1 p-1.5">
+          <button className={`min-h-11 rounded-2xl text-xs font-bold transition sm:text-sm ${!showFavorites ? "bg-[#f59a6c] text-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setShowFavorites(false)}>SoundCloud</button>
           <button className={`flex min-h-11 items-center justify-center gap-1 rounded-2xl text-xs font-bold transition sm:text-sm ${showFavorites ? "bg-blush/60 shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setShowFavorites(true)}><Heart className={`size-4 ${showFavorites ? "fill-[#d36f80] text-[#d36f80]" : ""}`} />Yêu thích</button>
         </div>
 
@@ -186,7 +178,7 @@ export function MusicScreen() {
         {favoriteError && !showFavorites && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{favoriteError}</p>}
         {playbackError && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{playbackError}</p>}
 
-        {visibleLoading ? <div className="py-24 text-center"><LoaderCircle className="mx-auto size-9 animate-spin text-[#d17485]" /><p className="mt-3 text-sm text-[#8b756a]">Đang tìm những giai điệu hay...</p></div> : visibleError ? <div className="soft-card mt-5 p-7 text-center"><p className="text-sm text-red-700">{visibleError}</p>{!showFavorites && <button className="secondary-button mt-4" type="button" onClick={() => setReloadKey((value) => value + 1)}><RefreshCw className="size-4" />Thử lại</button>}</div> : displayedTracks.length === 0 ? <div className="soft-card mt-5 p-10 text-center">{showFavorites ? <Heart className="mx-auto size-11 text-[#d18a96]" /> : <Music2 className="mx-auto size-11 text-[#d18a96]" />}<p className="mt-3 font-bold">{showFavorites ? "Hai bạn chưa có bài hát yêu thích." : "Không tìm thấy bài hát phù hợp."}</p>{showFavorites && <p className="mt-2 text-sm text-[#8b756a]">Mở YouTube hoặc SoundCloud rồi bấm trái tim cạnh bài hát nhé.</p>}</div> : <section className="mt-4 space-y-2">{displayedTracks.map((track) => {
+        {visibleLoading ? <div className="py-24 text-center"><LoaderCircle className="mx-auto size-9 animate-spin text-[#d17485]" /><p className="mt-3 text-sm text-[#8b756a]">Đang tìm những giai điệu hay...</p></div> : visibleError ? <div className="soft-card mt-5 p-7 text-center"><p className="text-sm text-red-700">{visibleError}</p>{!showFavorites && <button className="secondary-button mt-4" type="button" onClick={() => setReloadKey((value) => value + 1)}><RefreshCw className="size-4" />Thử lại</button>}</div> : displayedTracks.length === 0 ? <div className="soft-card mt-5 p-10 text-center">{showFavorites ? <Heart className="mx-auto size-11 text-[#d18a96]" /> : <Music2 className="mx-auto size-11 text-[#d18a96]" />}<p className="mt-3 font-bold">{showFavorites ? "Hai bạn chưa có bài hát yêu thích." : "Không tìm thấy bài hát phù hợp."}</p>{showFavorites && <p className="mt-2 text-sm text-[#8b756a]">Mở SoundCloud rồi bấm trái tim cạnh bài hát nhé.</p>}</div> : <section className="mt-4 space-y-2">{displayedTracks.map((track) => {
           const key = trackKey(track);
           const active = selected ? trackKey(selected) === key : false;
           const favorite = favoriteIds.has(key);

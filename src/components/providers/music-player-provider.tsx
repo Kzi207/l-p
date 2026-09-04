@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 
-export type MusicSource = "youtube" | "soundcloud";
+export type MusicSource = "soundcloud";
 
 export interface MusicTrack {
   id: string;
