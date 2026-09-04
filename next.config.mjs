@@ -25,6 +25,19 @@ const nextConfig = {
       },
     ],
   },
+  webpack(config, { isServer }) {
+    // Prevent Watchpack from scanning Windows system volumes (EINVAL errors)
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        "**/node_modules/**",
+        "**/.git/**",
+        "**/System Volume Information/**",
+        "D:/System Volume Information/**",
+      ],
+    };
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);

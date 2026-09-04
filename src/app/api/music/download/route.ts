@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "private, no-store",
       },
     });
-  } catch {
+  } catch (caught) {
+    console.error("Music download failed:", caught);
     return NextResponse.json({ error: "Chưa thể tải bài hát này. Hãy thử lại sau." }, { status: 502 });
   }
 }
