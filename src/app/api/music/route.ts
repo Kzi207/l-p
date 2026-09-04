@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(await searchSoundCloud(query), { headers: { "Cache-Control": "private, max-age=60" } });
     }
     return NextResponse.json(await searchYouTube(query), { headers: { "Cache-Control": "private, max-age=60" } });
-  } catch {
+  } catch (caught) {
+    console.error("Music search failed:", caught);
     return NextResponse.json({ error: "Nguồn nhạc đang phản hồi chậm hoặc tạm ngừng hoạt động." }, { status: 502 });
   }
 }

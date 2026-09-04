@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
   let parsedTrack: URL;
   try {
     parsedTrack = new URL(trackUrl);
-  } catch {
+  } catch (caught) {
+    console.error("Music stream failed:", caught);
     return NextResponse.json({ error: "Link bài hát không hợp lệ." }, { status: 400 });
   }
   if (parsedTrack.protocol !== "https:" || !ALLOWED_TRACK_HOSTS.has(parsedTrack.hostname)) {

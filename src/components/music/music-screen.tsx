@@ -66,7 +66,15 @@ export function MusicScreen() {
         const params = new URLSearchParams({ source });
         if (searchTerm) params.set("q", searchTerm);
         const response = await fetch(`/api/music?${params}`, { signal: controller.signal });
-        const payload = await response.json() as { data?: RawTrack[]; error?: string };
+        const responseText = await response.text();
+        let payload: { data?: RawTrack[]; error?: string };
+        try {
+          payload = JSON.parse(responseText) as { data?: RawTrack[]; error?: string };
+        } catch {
+          throw new Error(responseText.trimStart().startsWith("<")
+            ? "Máy chủ trả về trang lỗi HTML. Hãy kiểm tra bản deploy API nhạc."
+            : "Phản hồi API nhạc không đúng định dạng JSON.");
+        }
         if (!response.ok || !Array.isArray(payload.data)) throw new Error(payload.error || "Không thể tải danh sách nhạc.");
         setTracks(payload.data.filter((track) => track.id && track.title && track.url).map((track) => ({ ...track, source })));
       } catch (caught) {

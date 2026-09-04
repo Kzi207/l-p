@@ -3,7 +3,9 @@ import "server-only";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { Readable } from "node:stream";
 import ffmpegPath from "ffmpeg-static";
-import { Innertube, YTNodes } from "youtubei.js";
+import { Innertube, Platform, YTNodes } from "youtubei.js";
+
+Platform.shim.eval = async (data) => new Function(data.output)();
 
 let youtubeInstance: Innertube | null = null;
 let youtubePromise: Promise<Innertube> | null = null;
@@ -73,32 +75,6 @@ export async function searchYouTube(query: string) {
 }
 
 async function downloadAudio(videoId: string) {
-  // 1. Try Piped API instances first for better reliability and to avoid 403 blocks
-  const pipedInstances = [
-    "https://api.piped.projectsegfau.lt",
-    "https://pipedapi.smnz.de",
-    "https://pipedapi.kavin.rocks"
-  ];
-
-  for (const apiUrl of pipedInstances) {
-    try {
-      const res = await fetch(`${apiUrl}/streams/${videoId}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.audioStreams && data.audioStreams.length > 0) {
-          const bestAudio = data.audioStreams.sort((a: any, b: any) => b.bitrate - a.bitrate)[0];
-          const streamRes = await fetch(bestAudio.url);
-          if (streamRes.ok && streamRes.body) {
-            return streamRes.body;
-          }
-        }
-      }
-    } catch (pipedError) {
-      console.warn(`Piped API (${apiUrl}) failed:`, pipedError instanceof Error ? pipedError.message : String(pipedError));
-    }
-  }
-
-  // 2. Fallback to youtubei.js clients if Piped API fails
   const youtube = await getYouTube();
   const clients = ["IOS", "ANDROID", "WEB", "TV_EMBEDDED", "YTMUSIC", "MWEB"] as const;
   let lastError: unknown;
