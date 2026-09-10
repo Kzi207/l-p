@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title description">
+  <title id="title">Love Days</title>
+  <desc id="description">Không gian kỷ niệm riêng tư dành cho hai người</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7f1"/>
+      <stop offset="0.5" stop-color="#ffdce3"/>
+      <stop offset="1" stop-color="#ffd4b4"/>
+    </linearGradient>
+    <linearGradient id="heart" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ef8fa1"/>
+      <stop offset="1" stop-color="#c95870"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#a95267" flood-opacity=".2"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="360" rx="42" fill="url(#background)"/>
+  <circle cx="90" cy="70" r="105" fill="#fff" opacity=".3"/>
+  <circle cx="1110" cy="320" r="145" fill="#fff" opacity=".25"/>
+  <g opacity=".45" fill="#e77d91">
+    <path d="M1030 75c-20-28-68-7-48 28l48 51 48-51c20-35-28-56-48-28z"/>
+    <path d="M155 265c-14-20-47-5-33 20l33 35 34-35c13-25-20-40-34-20z"/>
+  </g>
+  <g transform="translate(185 180)" filter="url(#shadow)">
+    <path fill="url(#heart)" d="M0-49c-44-61-145-15-103 62C-78 59-27 96 0 115c27-19 78-56 103-102C145-64 44-110 0-49z"/>
+    <path fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" d="M-57-34c-21 9-28 31-17 51" opacity=".8"/>
+  </g>
+  <text x="375" y="152" fill="#4a3b34" font-family="Trebuchet MS, Arial, sans-serif" font-size="76" font-weight="800" letter-spacing="-2">Love Days</text>
+  <text x="380" y="207" fill="#a05567" font-family="Trebuchet MS, Arial, sans-serif" font-size="25" font-weight="600">GÓC NHỎ CHỈ THUỘC VỀ HAI NGƯỜI</text>
+  <rect x="380" y="240" width="384" height="48" rx="24" fill="#fff" opacity=".7"/>
+  <text x="572" y="272" text-anchor="middle" fill="#775b52" font-family="Trebuchet MS, Arial, sans-serif" font-size="20">Memories  •  Locket  •  Music  •  Together</text>
+</svg>
