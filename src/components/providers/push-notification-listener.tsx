@@ -1,7 +1,7 @@
 "use client";
 
 import { getMessaging, isSupported, onMessage } from "firebase/messaging";
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query } from "@/lib/database";
 import { useEffect } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useCoupleSpace } from "@/components/providers/couple-provider";

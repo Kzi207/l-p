@@ -1,4 +1,4 @@
-import type { Timestamp } from "firebase/firestore";
+import type { Timestamp } from "@/lib/database";
 
 export interface CoupleInfo {
   memberIds: string[];
@@ -94,4 +94,107 @@ export interface MusicFavoriteDocument {
   addedBy: string;
   addedByName: string;
   createdAt: Timestamp;
+}
+
+export interface JournalEntryDocument {
+  text: string;
+  mood: string;
+  imageUrl: string;
+  cloudinaryPublicId: string;
+  entryDate: string;
+  createdAt: Timestamp;
+  authorId: string;
+  authorName: string;
+}
+
+export interface CoupleEventDocument {
+  title: string;
+  eventType: "date" | "birthday" | "anniversary" | "appointment";
+  eventAt: Timestamp;
+  remindDays: number;
+  notes: string;
+  createdAt: Timestamp;
+  creatorId: string;
+  creatorName: string;
+  reminderSentAt?: Timestamp;
+}
+
+export interface TimeCapsuleDocument {
+  title: string;
+  message?: string;
+  mediaUrl?: string;
+  mediaType?: "image" | "video";
+  cloudinaryPublicId?: string;
+  openDate: Timestamp;
+  createdAt: Timestamp;
+  creatorId: string;
+  creatorName: string;
+  locked?: boolean;
+}
+
+export interface TripAlbumMedia {
+  url: string;
+  publicId: string;
+  type: "image" | "video";
+  caption: string;
+  uploadedAt: Timestamp;
+  uploaderId: string;
+}
+
+export interface TripAlbumDocument {
+  title: string;
+  location: string;
+  notes: string;
+  tripDate: Timestamp;
+  media: TripAlbumMedia[];
+  createdAt: Timestamp;
+  creatorId: string;
+  creatorName: string;
+}
+
+export interface FirstMomentDocument {
+  title: string;
+  category: "met" | "date" | "kiss" | "trip" | "custom";
+  happenedAt: Timestamp;
+  story: string;
+  imageUrl: string;
+  cloudinaryPublicId: string;
+  tags: string[];
+  createdAt: Timestamp;
+  creatorId: string;
+  creatorName: string;
+}
+
+export interface MusicHistoryDocument {
+  trackId: string;
+  source: "soundcloud";
+  title: string;
+  artist: string;
+  thumbnail: string;
+  url: string;
+  playedBy: string;
+  playedByName: string;
+  playedAt: Timestamp;
+}
+
+export interface WishItemDocument {
+  title: string;
+  category: "food" | "place" | "movie" | "activity" | "other";
+  note: string;
+  status: "open" | "done";
+  createdAt: Timestamp;
+  completedAt?: Timestamp;
+  creatorId: string;
+  creatorName: string;
+}
+
+export interface CoupleChallengeDocument {
+  title: string;
+  description: string;
+  targetDays: number;
+  checkInDates: string[];
+  status: "active" | "completed";
+  createdAt: Timestamp;
+  creatorId: string;
+  creatorName: string;
 }

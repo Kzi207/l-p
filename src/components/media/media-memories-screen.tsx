@@ -4,7 +4,7 @@
 import imageCompression from "browser-image-compression";
 import { AnimatePresence, motion } from "framer-motion";
 import type { User } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, Timestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, Timestamp, updateDoc } from "@/lib/database";
 import { CalendarDays, Film, ImagePlus, Images, LoaderCircle, Pencil, Play, Save, Send, Trash2, Upload, X } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { LoginScreen } from "@/components/auth/login-screen";

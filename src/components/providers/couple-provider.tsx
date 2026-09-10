@@ -1,6 +1,6 @@
 "use client";
 
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "@/lib/database";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { db } from "@/lib/firebase";
@@ -72,7 +72,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
       setError("");
     }, (caught) => {
       setLoading(false);
-      setError(`Không thể đọc hồ sơ (${caught.code}).`);
+      setError(caught.message || `Không thể đọc hồ sơ (${caught.code}).`);
     });
   }, [user]);
 
@@ -108,7 +108,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
       }
     }, (caught) => {
       setLoading(false);
-      setError(`Không thể đọc thông tin cặp đôi (${caught.code}).`);
+      setError(caught.message || `Không thể đọc thông tin cặp đôi (${caught.code}).`);
     });
     return () => {
       unsubscribeCouple();

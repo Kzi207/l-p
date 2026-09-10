@@ -1,4 +1,4 @@
-import { arrayUnion, doc, setDoc } from "firebase/firestore";
+import { arrayUnion, doc, setDoc } from "@/lib/database";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { db, firebaseApp } from "@/lib/firebase";
 

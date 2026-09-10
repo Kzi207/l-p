@@ -1,5 +1,5 @@
-import { FieldValue } from "firebase-admin/firestore";
-import { getAdminFirestore, getAdminMessaging } from "@/lib/firebaseAdmin";
+import { adminGet, adminWrite } from "@/lib/appsScriptAdminDb";
+import { getAdminMessaging } from "@/lib/firebaseAdmin";
 
 export interface PushResult {
   successCount: number;
@@ -16,10 +16,9 @@ function absoluteRoute(route: string) {
 
 /** Gửi Web Push tới mọi thiết bị của một user và tự loại token FCM đã hỏng. */
 export async function sendPushToUser(uid: string, title: string, body: string, route: string, extraData: Record<string, string> = {}): Promise<PushResult> {
-  const database = getAdminFirestore();
-  const userRef = database.doc(`users/${uid}`);
-  const user = await userRef.get();
-  const rawTokens = user.get("fcmTokens");
+  const userPath = `users/${uid}`;
+  const user = await adminGet<{ fcmTokens?: unknown[] }>(userPath);
+  const rawTokens = user.data?.fcmTokens;
   const tokens = Array.from(new Set(Array.isArray(rawTokens) ? rawTokens.filter((token): token is string => typeof token === "string" && token.length > 0) : [])).slice(0, 500);
 
   if (tokens.length === 0) return { successCount: 0, failureCount: 0, tokenCount: 0, removedTokenCount: 0 };
@@ -41,7 +40,11 @@ export async function sendPushToUser(uid: string, title: string, body: string, r
     .map(({ token }) => token);
 
   if (invalidTokens.length > 0) {
-    await userRef.update({ fcmTokens: FieldValue.arrayRemove(...invalidTokens) });
+    await adminWrite({
+      type: "update",
+      path: userPath,
+      data: { fcmTokens: tokens.filter((token) => !invalidTokens.includes(token)) },
+    });
   }
 
   return {

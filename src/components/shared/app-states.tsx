@@ -21,7 +21,7 @@ export function ConfigurationMissing() {
         </div>
         <p className="font-handwritten text-2xl text-[#a56f78]">Chỉ còn một bước nhỏ</p>
         <h1 className="mt-1 font-display text-3xl font-bold">Kết nối tổ ấm của bạn</h1>
-        <p className="mt-3 text-sm leading-6 text-[#806e65]">Sao chép <code>.env.local.example</code> thành <code>.env.local</code>, sau đó điền cấu hình Firebase và Cloudinary theo README.</p>
+        <p className="mt-3 text-sm leading-6 text-[#806e65]">Sao chép <code>.env.local.example</code> thành <code>.env.local</code>, sau đó điền cấu hình Firebase, Google Apps Script và Cloudinary theo README.</p>
       </section>
     </main>
   );

@@ -1,22 +1,21 @@
-import type { DocumentData } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { getAdminFirestore } from "@/lib/firebaseAdmin";
+import { adminGet, adminWrite, adminServerTimestamp } from "@/lib/appsScriptAdminDb";
 import { sendPushToUser } from "@/lib/sendPushNotification";
 import { ApiAuthError, verifyAuthToken } from "@/lib/verifyAuthToken";
 
 interface PartnerNotificationOptions {
   request: Request;
-  collectionName: "photos" | "locketPosts" | "mediaMemories" | "locketMessages";
+  collectionName: "photos" | "locketPosts" | "mediaMemories" | "locketMessages" | "journalEntries" | "coupleEvents" | "timeCapsules";
   itemId: unknown;
   senderUid: unknown;
-  senderField: "uploaderId" | "senderId";
-  type: "photo" | "locket" | "memory" | "message";
-  route: "/" | "/locket" | "/map" | "/chat";
-  content: (data: DocumentData) => { title: string; body: string };
+  senderField: "uploaderId" | "senderId" | "authorId" | "creatorId";
+  type: "photo" | "locket" | "memory" | "message" | "journal" | "calendar" | "timecapsule";
+  route: "/" | "/locket" | "/map" | "/chat" | "/journal" | "/calendar" | "/timecapsule";
+  content: (data: Record<string, unknown>) => { title: string; body: string };
 }
 
 function deepLink(route: string, type: PartnerNotificationOptions["type"], itemId: string) {
-  const parameter = type === "message" ? "message" : type === "locket" ? "post" : type === "memory" ? "memory" : "photo";
+  const parameter = type === "message" ? "message" : type === "locket" ? "post" : type === "memory" ? "memory" : type === "journal" ? "entry" : type === "calendar" ? "event" : type === "timecapsule" ? "capsule" : "photo";
   const separator = route.includes("?") ? "&" : "?";
   return `${route}${separator}${parameter}=${encodeURIComponent(itemId)}`;
 }
@@ -32,55 +31,59 @@ export async function notifyPartnerFromDocument(options: PartnerNotificationOpti
       return NextResponse.json({ error: "Thiếu ID nội dung vừa tạo." }, { status: 400 });
     }
 
-    const database = getAdminFirestore();
-    const user = await database.doc(`users/${token.uid}`).get();
-    const coupleId = user.get("coupleId");
+    const user = await adminGet<{ coupleId?: unknown }>(`users/${token.uid}`);
+    const coupleId = user.data?.coupleId;
     if (typeof coupleId !== "string" || !coupleId) {
       return NextResponse.json({ error: "Tài khoản chưa ghép đôi." }, { status: 409 });
     }
 
     const [couple, item] = await Promise.all([
-      database.doc(`couples/${coupleId}`).get(),
-      database.doc(`couples/${coupleId}/${options.collectionName}/${options.itemId}`).get(),
+      adminGet<{ memberIds?: unknown[] }>(`couples/${coupleId}`),
+      adminGet<Record<string, unknown>>(`couples/${coupleId}/${options.collectionName}/${options.itemId}`),
     ]);
-    const memberIds = couple.get("memberIds");
-    if (!couple.exists || !Array.isArray(memberIds) || !memberIds.includes(token.uid)) {
+    const memberIds = couple.data?.memberIds;
+    if (!couple.data || !Array.isArray(memberIds) || !memberIds.includes(token.uid)) {
       return NextResponse.json({ error: "Bạn không thuộc không gian cặp đôi này." }, { status: 403 });
     }
-    if (!item.exists || item.get(options.senderField) !== token.uid) {
+    if (!item.data || item.data[options.senderField] !== token.uid) {
       return NextResponse.json({ error: "Không tìm thấy nội dung hợp lệ của người gửi." }, { status: 403 });
     }
 
     const recipientUid = memberIds.find((uid): uid is string => typeof uid === "string" && uid !== token.uid);
     if (!recipientUid) return NextResponse.json({ successCount: 0, failureCount: 0, tokenCount: 0 });
 
-    const deliveryRef = database.doc(`couples/${coupleId}/notificationDeliveries/${options.type}_${options.itemId}`);
-    const reserved = await database.runTransaction(async (transaction) => {
-      const previous = await transaction.get(deliveryRef);
-      if (previous.exists) return false;
-      transaction.create(deliveryRef, {
+    const deliveryPath = `couples/${coupleId}/notificationDeliveries/${options.type}_${options.itemId}`;
+    try {
+      await adminWrite({
+        type: "create",
+        path: deliveryPath,
+        data: {
         type: options.type,
         itemId: options.itemId,
         senderUid: token.uid,
         recipientUid,
         status: "sending",
-        createdAt: new Date(),
+          createdAt: adminServerTimestamp(),
+        },
       });
-      return true;
-    });
-    if (!reserved) return NextResponse.json({ duplicate: true, successCount: 0, failureCount: 0, tokenCount: 0 });
+    } catch (caught) {
+      if (caught instanceof Error && caught.message.includes("RECORD_ALREADY_EXISTS")) {
+        return NextResponse.json({ duplicate: true, successCount: 0, failureCount: 0, tokenCount: 0 });
+      }
+      throw caught;
+    }
 
     try {
-      const content = options.content(item.data() || {});
+      const content = options.content(item.data || {});
       const result = await sendPushToUser(recipientUid, content.title, content.body, deepLink(options.route, options.type, options.itemId), {
         type: options.type,
         itemId: options.itemId,
       });
-      await deliveryRef.update({ status: "sent", sentAt: new Date(), ...result });
+      await adminWrite({ type: "update", path: deliveryPath, data: { status: "sent", sentAt: adminServerTimestamp(), ...result } });
       return NextResponse.json(result);
     } catch (caught) {
       // Gửi thất bại thì bỏ reservation để lần retry kế tiếp được phép thử lại.
-      await deliveryRef.delete().catch(() => undefined);
+      await adminWrite({ type: "delete", path: deliveryPath }).catch(() => undefined);
       throw caught;
     }
   } catch (caught) {

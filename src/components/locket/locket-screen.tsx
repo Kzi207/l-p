@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { motion } from "framer-motion";
-import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, updateDoc } from "@/lib/database";
 import { Camera, ChevronDown, Heart, ImagePlus, LoaderCircle, MessageCircle, MessagesSquare, RefreshCw, SwitchCamera, Trash2, Upload } from "lucide-react";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { LoginScreen } from "@/components/auth/login-screen";
@@ -15,6 +15,7 @@ import { useCoupleSpace } from "@/components/providers/couple-provider";
 import { PairingScreen } from "@/components/pairing/pairing-screen";
 import { db } from "@/lib/firebase";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { AvatarImage } from "@/components/shared/avatar-image";
 import type { LocketPostDocument } from "@/types/firestore";
 
 type Post = LocketPostDocument & { id: string };
@@ -56,7 +57,7 @@ function PostCard({ coupleId, post, userId, focused, onReply }: { coupleId: stri
   return (
     <motion.article id={`locket-${post.id}`} className={`soft-card scroll-m-24 overflow-hidden transition ${focused ? "ring-4 ring-[#df8292] ring-offset-4 ring-offset-[#fff8f0]" : ""}`} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}>
       <div className="flex items-center gap-3 px-4 py-3">
-        {post.uploaderPhotoUrl ? <span className="size-10 overflow-hidden rounded-full bg-blush/30">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={post.uploaderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-10 place-items-center rounded-full bg-blush/45 font-bold">{post.uploaderName.slice(0, 1)}</span>}
+        <span className="size-10 overflow-hidden rounded-full bg-blush/30"><AvatarImage src={post.uploaderPhotoUrl} alt={`Avatar ${post.uploaderName}`} /></span>
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{post.uploaderName}</p><p className="text-[10px] text-[#9b857b]">{createdAt ? createdAt.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "Vừa đăng"}</p></div>
         {post.uploaderId === userId && <button className="grid size-9 shrink-0 place-items-center rounded-full text-[#a36f78] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50" type="button" onClick={() => setDeleteConfirmOpen(true)} disabled={deleting} aria-label="Xóa ảnh Locket" title="Xóa ảnh">{deleting ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}</button>}
       </div>

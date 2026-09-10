@@ -1,12 +1,13 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { addDoc, collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp } from "@/lib/database";
 import type { User } from "firebase/auth";
 import { LoaderCircle, MessageCircleHeart, Send, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { db } from "@/lib/firebase";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { AvatarImage } from "@/components/shared/avatar-image";
 import { sendNotificationInBackground } from "@/lib/notification-client";
 import type { LocketMessageDocument } from "@/types/firestore";
 import type { UserDocument } from "@/types/firestore";
@@ -135,7 +136,7 @@ export function LocketChat({ user, coupleId, profile }: { user: User; coupleId: 
           const focused = focusedMessageId === message.id;
           return (
             <div id={`message-${message.id}`} className={`group flex scroll-m-28 items-center gap-2 rounded-2xl transition ${mine ? "flex-row-reverse" : ""} ${focused ? "bg-blush/15 ring-2 ring-[#df8292] ring-offset-4 ring-offset-[#fffaf5]" : ""}`} key={message.id}>
-              {message.senderPhotoUrl ? <span className="size-9 shrink-0 overflow-hidden rounded-full"><img src={message.senderPhotoUrl} alt="" className="size-full object-cover" /></span> : <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blush/45 text-xs font-bold">{message.senderName.slice(0, 1)}</span>}
+              <span className="size-9 shrink-0 overflow-hidden rounded-full bg-blush/30"><AvatarImage src={message.senderPhotoUrl} alt={`Avatar ${message.senderName}`} /></span>
               <div className={`max-w-[78%] rounded-[1.2rem] px-4 py-2.5 text-sm leading-5 ${mine ? "rounded-tr-sm bg-blush/70" : "rounded-tl-sm bg-white shadow-sm"}`}><p>{message.text}</p><span className="mt-1 block text-[9px] text-[#8d756b]">{message.senderName}</span></div>
               {mine && <button className="grid size-8 shrink-0 place-items-center rounded-full text-[#a47c75] opacity-70 transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" type="button" disabled={deletingId === message.id} onClick={() => setPendingRecall(message)} aria-label="Thu hồi tin nhắn" title="Thu hồi">{deletingId === message.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}</button>}
             </div>

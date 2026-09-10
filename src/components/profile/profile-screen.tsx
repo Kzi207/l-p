@@ -2,9 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { signOut } from "firebase/auth";
-import { doc, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, runTransaction, serverTimestamp, updateDoc } from "@/lib/database";
 import imageCompression from "browser-image-compression";
-import { Bell, Camera, Check, Copy, Heart, LoaderCircle, LogOut, Unlink, UserRound } from "lucide-react";
+import { Bell, Camera, Check, Copy, LoaderCircle, LogOut, Unlink } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -14,6 +14,7 @@ import { useCoupleSpace } from "@/components/providers/couple-provider";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { registerForPushNotifications } from "@/lib/fcm";
 import { auth, db } from "@/lib/firebase";
+import { AvatarImage } from "@/components/shared/avatar-image";
 
 export function ProfileScreen() {
   const { user } = useAuth();
@@ -176,7 +177,7 @@ export function ProfileScreen() {
 
         {partner && <section className="soft-card mt-6 p-4">
           <div className="flex items-center gap-4">
-            {partner.photoURL ? <span className="size-14 shrink-0 overflow-hidden rounded-full"><img className="size-full object-cover" src={partner.photoURL} alt="Ảnh người thương" /></span> : <span className="grid size-14 shrink-0 place-items-center rounded-full bg-blush/30"><Heart className="size-6 text-[#cc7484]" /></span>}
+            <span className="size-14 shrink-0 overflow-hidden rounded-full bg-blush/30"><AvatarImage src={partner.photoURL} alt="Ảnh người thương" /></span>
             <div className="min-w-0"><p className="text-xs text-[#98757c]">Đã ghép đôi với</p><p className="truncate font-display text-xl font-bold">{partner.nickname || partner.displayName}</p>{partner.bio && <p className="mt-0.5 line-clamp-2 text-xs text-[#806e65]">{partner.bio}</p>}</div>
           </div>
           <button className="secondary-button mt-4 w-full text-red-700" type="button" disabled={changingPartner} onClick={changePartner}>{changingPartner ? <LoaderCircle className="size-4 animate-spin" /> : <Unlink className="size-4" />}{changingPartner ? "Đang ngắt kết nối..." : "Đổi người ghép đôi"}</button>
@@ -186,7 +187,7 @@ export function ProfileScreen() {
           <div className="flex flex-col items-center text-center">
             <input ref={avatarInputRef} className="sr-only" type="file" accept="image/*" onChange={changeAvatar} disabled={avatarUploading} aria-label="Chọn ảnh đại diện từ máy" />
             <button className="group relative grid size-28 shrink-0 place-items-center overflow-visible rounded-full bg-blush/30 ring-4 ring-white shadow-soft transition active:scale-95 disabled:cursor-wait sm:size-32" type="button" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()} aria-label="Thay đổi ảnh đại diện">
-              <span className="size-full overflow-hidden rounded-full">{photoURL ? <img className="size-full object-cover transition group-hover:scale-105" src={photoURL} alt="Ảnh đại diện" /> : <span className="grid size-full place-items-center"><UserRound className="size-12 text-[#ce7787]" /></span>}</span>
+              <span className="size-full overflow-hidden rounded-full"><AvatarImage src={photoURL} alt="Ảnh đại diện" className="size-full object-cover transition group-hover:scale-105" /></span>
               <span className="absolute bottom-0 right-0 grid size-10 place-items-center rounded-full border-2 border-white bg-[#ef8fa0] text-white shadow-soft">{avatarUploading ? <LoaderCircle className="size-5 animate-spin" /> : <Camera className="size-5" />}</span>
             </button>
             <h2 className="mt-4 font-display text-xl font-bold">Thông tin của tôi</h2>

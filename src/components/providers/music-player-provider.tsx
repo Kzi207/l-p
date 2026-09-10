@@ -7,6 +7,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useCoupleSpace } from "@/components/providers/couple-provider";
+import { addDoc, collection, serverTimestamp } from "@/lib/database";
+import { db } from "@/lib/firebase";
 
 export type MusicSource = "soundcloud";
 
@@ -40,12 +43,14 @@ function downloadUrl(track: MusicTrack) {
 
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { couple, profile } = useCoupleSpace();
   const pathname = usePathname();
   const [selected, setSelected] = useState<MusicTrack | null>(null);
   const [queue, setQueue] = useState<MusicTrack[]>([]);
   const [playing, setPlaying] = useState(false);
   const [playbackError, setPlaybackError] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const lastHistoryRef = useRef({ key: "", time: 0 });
   const compact = pathname !== "/music";
 
   const selectedIndex = useMemo(() => selected ? queue.findIndex((track) => trackKey(track) === trackKey(selected)) : -1, [queue, selected]);
@@ -62,7 +67,18 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
       return track;
     });
-  }, []);
+    const historyKey = trackKey(track);
+    const shouldSaveHistory = historyKey !== lastHistoryRef.current.key || Date.now() - lastHistoryRef.current.time > 60_000;
+    if (user && couple && shouldSaveHistory) {
+      lastHistoryRef.current = { key: historyKey, time: Date.now() };
+      void addDoc(collection(db, "couples", couple.id, "musicHistory"), {
+      trackId: track.id, source: track.source, title: track.title, artist: track.artist,
+      thumbnail: track.thumbnail, url: track.url, playedBy: user.uid,
+      playedByName: profile?.nickname || profile?.displayName || user.displayName || "Người thương",
+      playedAt: serverTimestamp(),
+      }).catch(() => undefined);
+    }
+  }, [couple, profile, user]);
 
   const stepTrack = useCallback((direction: -1 | 1) => {
     if (queue.length === 0) return;

@@ -7,6 +7,10 @@
   "background_color": "#FFF8F0",
   "theme_color": "#FFB6C1",
   "orientation": "portrait-primary",
+  "shortcuts": [
+    { "name": "Đếm ngày yêu", "short_name": "Đếm ngày", "url": "/widget", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Mở Locket", "short_name": "Locket", "url": "/locket", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+  ],
   "icons": [
     {
       "src": "/icon.svg",

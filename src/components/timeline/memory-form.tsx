@@ -2,7 +2,7 @@
 
 import imageCompression from "browser-image-compression";
 import { AnimatePresence, motion } from "framer-motion";
-import { addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, Timestamp } from "@/lib/database";
 import type { User } from "firebase/auth";
 import { CalendarDays, ImagePlus, LoaderCircle, Plus, Send, X } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";

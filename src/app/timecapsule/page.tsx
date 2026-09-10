@@ -1,5 +1,2 @@
-import { FeaturePage } from "@/components/shared/feature-page";
-
-export default function TimeCapsulePage() {
-  return <FeaturePage type="timecapsule" />;
-}
+import { PhaseOneScreen } from "@/components/phase-one/phase-one-screen";
+export default function TimeCapsulePage() { return <PhaseOneScreen feature="timecapsule" />; }

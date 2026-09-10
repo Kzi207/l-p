@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import type { DatabaseMarker } from "@/lib/database";
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,17 +12,20 @@ export const firebaseConfig = {
 };
 
 export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
+export const isDatabaseConfigured = Boolean(process.env.NEXT_PUBLIC_APPS_SCRIPT_URL?.trim());
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
-let firestoreInstance: Firestore | null = null;
 
 if (isFirebaseConfigured) {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   authInstance = getAuth(app);
-  firestoreInstance = getFirestore(app);
 }
 
 export const firebaseApp = app;
 export const auth = authInstance;
-export const db = firestoreInstance;
+// Dữ liệu ứng dụng nằm trong Google Sheets qua Apps Script. Giữ một marker
+// truthy để các màn hình cũ vẫn có thể kiểm tra cấu hình trước khi gọi API.
+export const db: DatabaseMarker | null = isFirebaseConfigured && isDatabaseConfigured
+  ? ({ __googleSheetsDatabase: true } as const)
+  : null;

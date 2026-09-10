@@ -3,7 +3,7 @@
 import imageCompression from "browser-image-compression";
 import { AnimatePresence, motion } from "framer-motion";
 import { Camera, ImagePlus, LoaderCircle, Send, X } from "lucide-react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "@/lib/database";
 import { ChangeEvent, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { uploadToCloudinary } from "@/lib/cloudinary";

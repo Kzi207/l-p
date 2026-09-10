@@ -65,7 +65,7 @@ export async function searchSoundCloud(query: string) {
   return {
     status: true,
     type: isHome ? "home" : "search",
-    query: isHome ? "Bài hát đang thịnh hành (Home)" : searchTerm,
+    query: isHome ? "Bài hát đang thịnh hành 2026  (trường an,dalu, gia pon, pon pon,leoleo,HL) (Home)" : searchTerm,
     total: tracks.length,
     data: tracks,
   };

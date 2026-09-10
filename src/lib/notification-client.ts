@@ -2,7 +2,7 @@
 
 import type { User } from "firebase/auth";
 
-export type NotificationEndpoint = "/api/notify/photo" | "/api/notify/locket" | "/api/notify/memory" | "/api/notify/chat";
+export type NotificationEndpoint = "/api/notify/photo" | "/api/notify/locket" | "/api/notify/memory" | "/api/notify/chat" | "/api/notify/phase-one";
 
 interface PendingNotification {
   id: string;

@@ -3,7 +3,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import type { User } from "firebase/auth";
-import { collection, limit, onSnapshot, orderBy, query, type Timestamp } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query, type Timestamp } from "@/lib/database";
 import { Bell, BellRing, Camera, CheckCheck, Heart, Images, LoaderCircle, MessageCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -72,7 +72,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
   useEffect(() => {
     if (!db) {
       setLoading(false);
-      setError("Firebase chưa sẵn sàng.");
+      setError("Google Sheets chưa sẵn sàng.");
       return;
     }
 

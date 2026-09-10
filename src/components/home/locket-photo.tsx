@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Camera, Heart } from "lucide-react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc } from "@/lib/database";
 import { useState } from "react";
 import { db } from "@/lib/firebase";
 import type { PhotoDocument } from "@/types/firestore";

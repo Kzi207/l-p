@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query } from "@/lib/database";
 import { CalendarDays, Filter, Grid2X2, Heart, ImagePlus, List, Plus, RefreshCw, X } from "lucide-react";
 import Masonry from "react-masonry-css";
 import { useMemo, useState, useEffect } from "react";

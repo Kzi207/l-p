@@ -1,6 +1,6 @@
 "use client";
 
-import { doc, Timestamp, updateDoc } from "firebase/firestore";
+import { doc, Timestamp, updateDoc } from "@/lib/database";
 import { CalendarHeart, LoaderCircle } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { useCoupleSpace } from "@/components/providers/couple-provider";

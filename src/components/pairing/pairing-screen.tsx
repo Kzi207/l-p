@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { signOut, type User } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where } from "@/lib/database";
 import { Check, Clock3, Copy, HeartHandshake, Link2, LoaderCircle, LogOut, Send, UserRound, UsersRound, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useCoupleSpace } from "@/components/providers/couple-provider";

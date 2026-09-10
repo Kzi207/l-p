@@ -11,6 +11,8 @@ const withPWA = withPWAInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
   experimental: {
     serverComponentsExternalPackages: ["youtubei.js", "ffmpeg-static"],
   },
