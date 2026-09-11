@@ -256,7 +256,7 @@ textarea.input-field { line-height: 1.55; }
 }
 
 @supports (padding: max(0px)) {
-  .bottom-nav { padding-bottom: max(.375rem, env(safe-area-inset-bottom)); }
+  .bottom-nav { padding-bottom: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

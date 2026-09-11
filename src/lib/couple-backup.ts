@@ -1,7 +1,7 @@
 import { collection, exportCouple, getDocs } from "@/lib/database";
 import { db } from "@/lib/firebase";
 
-const backupCollections = ["photos", "memories", "mediaMemories", "locketPosts", "journalEntries", "coupleEvents", "timeCapsules", "tripAlbums", "firstMoments", "musicFavorites", "musicHistory", "wishItems", "coupleChallenges"];
+const backupCollections = ["photos", "memories", "mediaMemories", "locketPosts", "coupleEvents", "timeCapsules", "tripAlbums", "firstMoments", "musicFavorites", "musicHistory", "wishItems", "coupleChallenges"];
 
 async function collectWithLegacyApi(coupleId: string) {
   const entries = await Promise.all(backupCollections.map(async (name) => {

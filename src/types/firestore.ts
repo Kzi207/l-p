@@ -96,21 +96,13 @@ export interface MusicFavoriteDocument {
   createdAt: Timestamp;
 }
 
-export interface JournalEntryDocument {
-  text: string;
-  mood: string;
-  imageUrl: string;
-  cloudinaryPublicId: string;
-  entryDate: string;
-  createdAt: Timestamp;
-  authorId: string;
-  authorName: string;
-}
-
 export interface CoupleEventDocument {
   title: string;
   eventType: "date" | "birthday" | "anniversary" | "appointment";
   eventAt: Timestamp;
+  endAt?: Timestamp;
+  allDay?: boolean;
+  scheduleType?: "personal" | "together";
   remindDays: number;
   notes: string;
   createdAt: Timestamp;

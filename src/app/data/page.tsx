@@ -1,2 +1,2 @@
-import { PhaseFourScreen } from "@/components/phase-four/phase-four-screen";
-export default function DataPage() { return <PhaseFourScreen feature="data" />; }
+import { DataScreen } from "@/components/data/data-screen";
+export default function DataPage() { return <DataScreen />; }

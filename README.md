@@ -39,7 +39,6 @@ Love Days là web app mobile-first dành riêng cho các cặp đôi. Hai tài k
 - Ghép đôi bằng liên kết hoặc UID và yêu cầu người nhận đồng ý.
 - Dữ liệu của cặp đôi chỉ hiển thị cho hai thành viên đã ghép đôi.
 - Hồ sơ cá nhân, ảnh đại diện và thông tin người thương.
-- Khóa bằng PIN hoặc Face ID/vân tay trên thiết bị hỗ trợ WebAuthn.
 
 ### Kỷ niệm
 
@@ -47,7 +46,7 @@ Love Days là web app mobile-first dành riêng cho các cặp đôi. Hai tài k
 - Timeline ảnh, chỉnh sửa, xóa, tag và lọc theo thời gian.
 - Locket camera: chụp hoặc tải nhiều ảnh, reaction, trả lời và chat realtime.
 - Album ảnh/video theo chuyến đi và bộ sưu tập những “lần đầu”.
-- Nhật ký chung, lịch đôi, lời nhắc và Time Capsule.
+- Lịch đôi, lời nhắc và Time Capsule.
 - Tìm kiếm theo nội dung, ngày, người đăng và hashtag.
 
 ### Cùng nhau
@@ -55,7 +54,7 @@ Love Days là web app mobile-first dành riêng cho các cặp đôi. Hai tài k
 - Tìm kiếm, phát và tải nhạc từ SoundCloud.
 - Playlist yêu thích và lịch sử nghe nhạc chung.
 - Danh sách mong muốn và thử thách đôi với check-in hằng ngày.
-- Xuất dữ liệu thành JSON/PDF và sao lưu tự động trên thiết bị.
+- Xuất toàn bộ dữ liệu thành JSON hoặc lưu thành PDF khi cần.
 
 ### PWA và thông báo
 
@@ -135,7 +134,8 @@ Phản hồi chuẩn:
 ```json
 {
   "ok": true,
-  "version": "love-days-sheets-v2",
+  "version": "love-days-sheets-v3",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
   "data": {}
 }
 ```
@@ -155,7 +155,6 @@ Phản hồi chuẩn:
 | `couples/{coupleId}/locketPosts` | Bài ảnh Locket và reaction |
 | `couples/{coupleId}/locketPosts/{postId}/replies` | Phản hồi theo từng bài Locket |
 | `couples/{coupleId}/locketMessages` | Tin nhắn riêng realtime |
-| `couples/{coupleId}/journalEntries` | Nhật ký chung hằng ngày |
 | `couples/{coupleId}/coupleEvents` | Lịch đôi và ngày nhắc |
 | `couples/{coupleId}/timeCapsules` | Thư và media khóa đến ngày mở |
 | `couples/{coupleId}/tripAlbums` | Album chuyến đi |

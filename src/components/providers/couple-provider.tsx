@@ -38,8 +38,13 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
     setCouple(null);
     setLoading(true);
     setError("");
+    const loadingTimeout = window.setTimeout(() => {
+      setLoading(false);
+      setError("Không thể tải không gian riêng lúc này. Hãy kiểm tra mạng rồi thử lại.");
+    }, 15_000);
     const userRef = doc(db, "users", user.uid);
-    return onSnapshot(userRef, async (snapshot) => {
+    const unsubscribe = onSnapshot(userRef, async (snapshot) => {
+      window.clearTimeout(loadingTimeout);
       if (!snapshot.exists()) {
         const newProfile: UserDocument = {
           displayName: user.displayName || user.email?.split("@")[0] || "Người thương",
@@ -71,9 +76,14 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
       }
       setError("");
     }, (caught) => {
+      window.clearTimeout(loadingTimeout);
       setLoading(false);
       setError(caught.message || `Không thể đọc hồ sơ (${caught.code}).`);
     });
+    return () => {
+      window.clearTimeout(loadingTimeout);
+      unsubscribe();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -87,8 +97,13 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
     const database = db;
     const coupleId = profile.coupleId;
     setLoading(true);
+    const loadingTimeout = window.setTimeout(() => {
+      setLoading(false);
+      setError("Không thể tải thông tin ghép đôi lúc này. Hãy thử lại sau.");
+    }, 15_000);
     let unsubscribePartner: () => void = () => {};
     const unsubscribeCouple = onSnapshot(doc(database, "couples", coupleId), (snapshot) => {
+      window.clearTimeout(loadingTimeout);
       if (!snapshot.exists()) {
         setCouple(null);
         setLoading(false);
@@ -107,10 +122,12 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
         });
       }
     }, (caught) => {
+      window.clearTimeout(loadingTimeout);
       setLoading(false);
       setError(caught.message || `Không thể đọc thông tin cặp đôi (${caught.code}).`);
     });
     return () => {
+      window.clearTimeout(loadingTimeout);
       unsubscribeCouple();
       unsubscribePartner();
     };

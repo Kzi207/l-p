@@ -4,7 +4,8 @@
 import { signOut } from "firebase/auth";
 import { doc, runTransaction, serverTimestamp, updateDoc } from "@/lib/database";
 import imageCompression from "browser-image-compression";
-import { Bell, Camera, Check, Copy, LoaderCircle, LogOut, Unlink } from "lucide-react";
+import { Bell, Camera, Check, Copy, DatabaseBackup, LoaderCircle, LogOut, Unlink } from "lucide-react";
+import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -213,6 +214,8 @@ export function ProfileScreen() {
           {(notificationStatus === "denied" || notificationStatus === "unsupported") && <p className="mt-2 text-xs text-red-700">Trình duyệt chưa cho phép hoặc không hỗ trợ thông báo.</p>}
           {notificationError && <p className="mt-2 text-xs text-red-700">{notificationError}</p>}
         </section>
+
+        <Link href="/data" className="soft-card mt-5 flex items-center gap-3 p-4"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blush/30"><DatabaseBackup className="size-5 text-[#c66f80]" /></span><span><strong className="block">Xuất dữ liệu</strong><span className="text-xs text-[#806e65]">Tải bản sao JSON hoặc lưu PDF</span></span></Link>
 
         <section className="soft-card mt-5 p-5 text-center">
           <button className="secondary-button w-full justify-center text-red-700 hover:bg-red-50" type="button" onClick={() => auth && signOut(auth)}>

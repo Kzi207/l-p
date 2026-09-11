@@ -133,19 +133,36 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
   if (!endpoint) throw new Error("Thiếu NEXT_PUBLIC_APPS_SCRIPT_URL.");
   const user = auth?.currentUser;
   if (!user) throw new Error("Bạn cần đăng nhập lại.");
-  const token = await user.getIdToken();
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action, token, ...(serialize(payload) as JsonRecord) }),
-    cache: "no-store",
-  });
-  const text = await response.text();
+  const token = await Promise.race([
+    user.getIdToken(),
+    new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Phiên đăng nhập phản hồi quá lâu. Hãy mở lại ứng dụng.")), 8_000)),
+  ]);
+  const body = JSON.stringify({ action, token, ...(serialize(payload) as JsonRecord) });
+  let response: Response | null = null;
+  let text = "";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const separator = endpoint.includes("?") ? "&" : "?";
+    response = await fetch(`${endpoint}${separator}_=${Date.now()}`, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body,
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
+    });
+    text = await response.text();
+    if (!text.trimStart().startsWith("<") || attempt === 1) break;
+    await new Promise((resolve) => window.setTimeout(resolve, 450));
+  }
+  if (!response) throw new Error("Không thể kết nối Apps Script.");
   let result: { ok?: boolean; data?: T; error?: string };
   try {
     result = JSON.parse(text) as typeof result;
   } catch {
-    throw new Error(text.trim().startsWith("<") ? "Apps Script đang trả về trang HTML. Hãy kiểm tra URL deploy và quyền truy cập." : "Apps Script trả dữ liệu không hợp lệ.");
+    const html = text.trimStart().startsWith("<");
+    const loginPage = html && /accounts\.google\.com|servicelogin|sign in/i.test(text);
+    throw new Error(loginPage ? "Apps Script đang yêu cầu đăng nhập Google. Hãy deploy Web App với quyền truy cập Anyone." : html ? "Apps Script tạm trả về trang HTML sau 2 lần thử. Hãy đóng hẳn PWA rồi mở lại." : "Apps Script trả dữ liệu không hợp lệ.");
   }
   if (!response.ok || !result.ok) throw new Error(result.error || `Apps Script lỗi ${response.status}.`);
   if (!("data" in result)) {

@@ -35,7 +35,7 @@ export function BottomNav() {
   const locketActive = pathname === "/locket" || pathname === "/chat";
 
   return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-30 px-2 pb-1.5 sm:px-6 sm:pb-4" aria-label="Điều hướng chính">
+    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-30 px-2 pb-0 sm:px-6 sm:pb-0" aria-label="Điều hướng chính">
       <div className="bottom-nav-panel app-frame grid grid-cols-[minmax(0,1fr)_4.35rem_minmax(0,1fr)] items-stretch rounded-[1.75rem] border border-white/90 bg-[#fffaf5]/88 p-1.5 backdrop-blur-2xl sm:p-2">
         <div className="grid min-w-0 grid-cols-2">
           {leftItems.map(renderItem)}

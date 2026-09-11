@@ -4,6 +4,7 @@
 import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "@/lib/database";
 import { Disc3, Download, Headphones, Heart, LoaderCircle, Music2, Pause, Play, RefreshCw, Search, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { PairingScreen } from "@/components/pairing/pairing-screen";
@@ -173,6 +174,7 @@ export function MusicScreen() {
           <button className={`min-h-11 rounded-2xl text-xs font-bold transition sm:text-sm ${!showFavorites ? "bg-[#f59a6c] text-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setShowFavorites(false)}>SoundCloud</button>
           <button className={`flex min-h-11 items-center justify-center gap-1 rounded-2xl text-xs font-bold transition sm:text-sm ${showFavorites ? "bg-blush/60 shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setShowFavorites(true)}><Heart className={`size-4 ${showFavorites ? "fill-[#d36f80] text-[#d36f80]" : ""}`} />Yêu thích</button>
         </div>
+        <Link href="/music-history" className="secondary-button mt-3 w-full"><Headphones className="size-4" />Xem nhật ký nghe nhạc của hai bạn</Link>
 
         <div className="mt-7 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#aa7a83]">{showFavorites ? "Playlist chung realtime" : searchTerm ? "Kết quả tìm kiếm" : "Dành cho hai bạn"}</p><h2 className="font-display text-2xl font-extrabold">{showFavorites ? "Bài hai mình yêu thích" : searchTerm ? `“${searchTerm}”` : "Đang thịnh hành"}</h2></div>{!visibleLoading && <span className="rounded-full bg-blush/25 px-3 py-1 text-xs font-bold">{displayedTracks.length} bài</span>}</div>
         {favoriteError && !showFavorites && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{favoriteError}</p>}
