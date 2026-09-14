@@ -48,15 +48,19 @@ export async function POST(request: NextRequest) {
     if (!contentType.includes("application/json")) throw new Error("TikWM returned a non-JSON response");
     const result = await response.json() as { code?: number; msg?: string; data?: Record<string, unknown> };
     const data = result.data;
-    if (result.code !== 0 || !data) return NextResponse.json({ error: result.msg || "TikWM chưa đọc được video này." }, { status: 422 });
+    if (result.code !== 0 || !data) return NextResponse.json({ error: result.msg || "TikWM chưa đọc được nội dung này." }, { status: 422 });
     const author = typeof data.author === "object" && data.author ? data.author as Record<string, unknown> : {};
+    const images = Array.isArray(data.images) ? data.images.map(safeMediaUrl).filter(Boolean) : [];
     const videoUrl = safeMediaUrl(data.hdplay) || safeMediaUrl(data.play);
-    if (!videoUrl) return NextResponse.json({ error: "Không tìm thấy đường dẫn tải video." }, { status: 502 });
+    const mediaType = images.length > 0 ? "images" : "video";
+    if (mediaType === "video" && !videoUrl) return NextResponse.json({ error: "Không tìm thấy ảnh hoặc video để tải." }, { status: 502 });
     return NextResponse.json({
       id: String(data.id || "tiktok-video"),
-      title: String(data.title || "Video TikTok"),
+      mediaType,
+      title: String(data.title || (mediaType === "images" ? "Bài ảnh TikTok" : "Video TikTok")),
       cover: safeMediaUrl(data.cover) || safeMediaUrl(data.origin_cover),
       videoUrl,
+      images,
       musicUrl: safeMediaUrl(data.music),
       author: String(author.nickname || author.unique_id || "TikTok"),
     }, { headers: { "Cache-Control": "no-store" } });
