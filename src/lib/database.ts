@@ -79,6 +79,9 @@ type SnapshotView<T> = DocumentSnapshot<T> | QuerySnapshot<T>;
 
 const endpoint = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL?.trim() || "";
 const inflightReads = new Map<string, Promise<unknown>>();
+// Reuse the last successful value when a listener is recreated after an auth
+// transition. A network refresh still starts immediately in the background.
+const snapshotCache = new Map<string, SnapshotView<DocumentData>>();
 
 function isReference(value: unknown): value is Reference {
   return Boolean(value && typeof value === "object" && (value as Reference).__databaseReference);
@@ -140,19 +143,33 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
   const body = JSON.stringify({ action, token, ...(serialize(payload) as JsonRecord) });
   let response: Response | null = null;
   let text = "";
+  const safeToRetry = action === "get" || action === "list" || action === "exportCouple";
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const separator = endpoint.includes("?") ? "&" : "?";
-    response = await fetch(`${endpoint}${separator}_=${Date.now()}`, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body,
-      cache: "no-store",
-      credentials: "omit",
-      redirect: "follow",
-      signal: AbortSignal.timeout(12_000),
-    });
-    text = await response.text();
-    if (!text.trimStart().startsWith("<") || attempt === 1) break;
+    try {
+      response = await fetch(`${endpoint}${separator}_=${Date.now()}`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body,
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "follow",
+        signal: AbortSignal.timeout(attempt === 0 ? 10_000 : 15_000),
+      });
+      text = await response.text();
+      if (!text.trimStart().startsWith("<") || attempt === 1) break;
+    } catch (caught) {
+      if (safeToRetry && attempt === 0 && navigator.onLine) {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        continue;
+      }
+      const timedOut = caught instanceof Error && (caught.name === "TimeoutError" || caught.name === "AbortError" || /timed?\s*out/i.test(caught.message));
+      throw new Error(timedOut
+        ? "Kết nối máy chủ dữ liệu quá thời gian. Ứng dụng sẽ tự thử lại."
+        : navigator.onLine
+          ? "Không thể kết nối máy chủ dữ liệu. Ứng dụng sẽ tự thử lại."
+          : "Thiết bị đang mất mạng. Dữ liệu sẽ tự đồng bộ khi có kết nối lại.");
+    }
     await new Promise((resolve) => window.setTimeout(resolve, 450));
   }
   if (!response) throw new Error("Không thể kết nối Apps Script.");
@@ -257,22 +274,40 @@ export function onSnapshot<T = DocumentData>(
   let active = true;
   let running = false;
   let lastPayload = "";
+  let retryTimer: number | undefined;
+  let retryDelay = 1_500;
   const isDocument = reference.path.split("/").length % 2 === 0;
+  const cacheKey = `${auth?.currentUser?.uid || "anonymous"}:${reference.path}:${JSON.stringify(reference.constraints || [])}`;
+  const cached = snapshotCache.get(cacheKey) as SnapshotView<T> | undefined;
+
+  if (cached) {
+    lastPayload = JSON.stringify(cached instanceof DocumentSnapshot ? cached.data() : cached.docs.map((item) => [item.id, item.data()]));
+    onNext(cached);
+  }
 
   const refresh = async () => {
     if (!active || running) return;
     running = true;
     try {
       const snapshot = isDocument ? await getDoc<T>(reference) : await getDocs<T>(reference);
+      // A request can finish after the owning React effect was cleaned up. Do not
+      // allow that stale response to overwrite a newer sign-in session.
+      if (!active) return;
+      snapshotCache.set(cacheKey, snapshot as SnapshotView<DocumentData>);
+      retryDelay = 1_500;
       const payload = JSON.stringify(snapshot instanceof DocumentSnapshot ? snapshot.data() : snapshot.docs.map((item) => [item.id, item.data()]));
       if (payload !== lastPayload) {
         lastPayload = payload;
         onNext(snapshot);
       }
     } catch (caught) {
+      if (!active) return;
       const error = (caught instanceof Error ? caught : new Error("Không thể đồng bộ Google Sheets.")) as DatabaseError;
       if (!error.code) error.code = "apps-script/unavailable";
       onError?.(error);
+      window.clearTimeout(retryTimer);
+      retryTimer = window.setTimeout(() => void refresh(), retryDelay);
+      retryDelay = Math.min(retryDelay * 2, 10_000);
     } finally {
       running = false;
     }
@@ -294,6 +329,7 @@ export function onSnapshot<T = DocumentData>(
   return () => {
     active = false;
     window.clearTimeout(timer);
+    window.clearTimeout(retryTimer);
     window.removeEventListener("focus", resume);
     window.removeEventListener("online", resume);
     document.removeEventListener("visibilitychange", resume);
