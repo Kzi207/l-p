@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("TikWM request failed:", error);
-    return NextResponse.json({ error: error instanceof Error && error.name === "AbortError" ? "TikWM phản hồi quá lâu. Hãy thử lại." : "Không thể kết nối TikWM lúc này." }, { status: 502 });
+    const timedOut = error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError" || /abort|timed?\s*out/i.test(error.message));
+    return NextResponse.json({ error: timedOut ? "TikWM phản hồi quá lâu. Hãy thử lại." : "Không thể kết nối TikWM lúc này." }, { status: 502 });
   } finally {
     clearTimeout(timeout);
   }

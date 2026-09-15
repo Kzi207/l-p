@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(response.body, { status: 200, headers });
   } catch (error) {
     console.error("TikTok media download failed:", error);
-    const timedOut = error instanceof Error && error.name === "AbortError";
+    const timedOut = error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError" || /abort|timed?\s*out/i.test(error.message));
     return NextResponse.json({ error: timedOut ? "Tệp phản hồi quá lâu. Hãy thử lại." : "Không thể tải tệp TikTok lúc này." }, { status: 502 });
   } finally {
     clearTimeout(timeout);

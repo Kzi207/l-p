@@ -163,7 +163,7 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
         await new Promise((resolve) => window.setTimeout(resolve, 500));
         continue;
       }
-      const timedOut = caught instanceof Error && (caught.name === "TimeoutError" || caught.name === "AbortError" || /timed?\s*out/i.test(caught.message));
+      const timedOut = caught instanceof Error && (caught.name === "TimeoutError" || caught.name === "AbortError" || /abort|timed?\s*out/i.test(caught.message));
       throw new Error(timedOut
         ? "Kết nối máy chủ dữ liệu quá thời gian. Ứng dụng sẽ tự thử lại."
         : navigator.onLine

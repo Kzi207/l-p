@@ -22,6 +22,14 @@ function mediaDownloadUrl(url: string, filename: string) {
   return `/api/tiktok/download?${new URLSearchParams({ url, filename }).toString()}`;
 }
 
+function friendlyRequestError(reason: unknown, fallback: string) {
+  if (!(reason instanceof Error)) return fallback;
+  if (reason.name === "AbortError" || reason.name === "TimeoutError" || /abort|timed?\s*out/i.test(reason.message)) {
+    return "Kết nối tải tệp bị gián đoạn. Hãy kiểm tra mạng rồi thử lại.";
+  }
+  return reason.message || fallback;
+}
+
 export function TikTokDownloader() {
   const [url, setUrl] = useState("");
   const [result, setResult] = useState<TikTokResult | null>(null);
@@ -49,7 +57,7 @@ export function TikTokDownloader() {
       if (!response.ok) throw new Error(data.error || "Chưa thể tải nội dung TikTok.");
       setResult(data);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Chưa thể tải nội dung TikTok.");
+      setError(friendlyRequestError(reason, "Chưa thể tải nội dung TikTok."));
     } finally {
       setLoading(false);
     }
@@ -58,6 +66,7 @@ export function TikTokDownloader() {
   async function saveMedia(mediaUrl: string, filename: string, key: string) {
     setError("");
     setDownloadState({ key, message: "Đang chuẩn bị tệp..." });
+    let sharing = false;
     try {
       const response = await fetch(mediaDownloadUrl(mediaUrl, filename));
       if (!response.ok) {
@@ -73,6 +82,7 @@ export function TikTokDownloader() {
 
       if (navigator.share && navigator.canShare?.(shareData)) {
         setDownloadState({ key, message: "Hãy chọn “Lưu video” hoặc “Lưu hình ảnh”." });
+        sharing = true;
         await navigator.share(shareData);
         setDownloadState({ key, message: "Đã gửi tệp tới bảng chia sẻ." });
         return;
@@ -88,12 +98,12 @@ export function TikTokDownloader() {
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
       setDownloadState({ key, message: "Đã tải tệp xuống thiết bị." });
     } catch (reason) {
-      if (reason instanceof DOMException && reason.name === "AbortError") {
+      if (sharing && reason instanceof DOMException && reason.name === "AbortError") {
         setDownloadState(null);
         return;
       }
       setDownloadState(null);
-      setError(reason instanceof Error ? reason.message : "Không thể lưu tệp này.");
+      setError(friendlyRequestError(reason, "Không thể lưu tệp này."));
     }
   }
 
