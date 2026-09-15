@@ -9,7 +9,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
   <img alt="PWA" src="https://img.shields.io/badge/PWA-Mobile_First-EF7890" />
   <img alt="Firebase" src="https://img.shields.io/badge/Firebase-Auth_%26_FCM-FFCA28?logo=firebase&logoColor=black" />
-  <img alt="Google Sheets" src="https://img.shields.io/badge/Google_Sheets-Database-34A853?logo=googlesheets&logoColor=white" />
+  <img alt="Neon" src="https://img.shields.io/badge/Neon-PostgreSQL-00E599?logo=postgresql&logoColor=white" />
   <img alt="Cloudinary" src="https://img.shields.io/badge/Cloudinary-Media-3448C5?logo=cloudinary&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-Non--Commercial-C95870" />
 </p>
@@ -69,7 +69,7 @@ Love Days là web app mobile-first dành riêng cho các cặp đôi. Hai tài k
 |---|---|
 | Giao diện | Next.js 14, React 18, TypeScript, Tailwind CSS, Framer Motion |
 | Xác thực | Firebase Authentication — Google Sign-In |
-| Dữ liệu | Google Sheets + Google Apps Script Web App |
+| Dữ liệu | Neon PostgreSQL + Neon Serverless Driver |
 | Ảnh và video | Cloudinary |
 | Thông báo | Firebase Cloud Messaging + Service Worker |
 | Âm nhạc | SoundCloud API + Next.js API Routes |
@@ -80,8 +80,8 @@ Love Days là web app mobile-first dành riêng cho các cặp đôi. Hai tài k
 ```mermaid
 flowchart LR
     A[📱 PWA / Next.js] -->|Google Sign-In| B[🔥 Firebase Auth]
-    A -->|JSON API| C[⚡ Google Apps Script]
-    C --> D[(📊 Google Sheets)]
+    A -->|Firebase token| C[⚡ Next.js Database API]
+    C --> D[(🐘 Neon PostgreSQL)]
     A -->|Ảnh & video| E[☁️ Cloudinary]
     A -->|Nhạc| F[🎵 SoundCloud]
     A -->|Notify API| G[🔔 Firebase Cloud Messaging]
@@ -92,10 +92,9 @@ flowchart LR
 | Lớp | Trách nhiệm |
 |---|---|
 | Client PWA | Giao diện, cache, camera, upload, trình phát và thông báo |
-| Next.js server | Proxy nhạc, tải MP3, xác thực request và gửi FCM |
-| Apps Script | API dữ liệu, xác thực Firebase token và phân quyền cặp đôi |
-| Google Sheets | Lưu document theo đường dẫn trong sheet `Records` |
-| Cloudinary | Lưu file ảnh/video; Sheets chỉ giữ URL và metadata |
+| Next.js server | API dữ liệu, phân quyền cặp đôi, proxy media và gửi FCM |
+| Neon PostgreSQL | Lưu document theo `path` và `JSONB` trong `love_days_records` |
+| Cloudinary | Lưu file ảnh/video; Neon chỉ giữ URL và metadata |
 
 ## 🔌 API Reference
 
@@ -107,6 +106,7 @@ flowchart LR
 | `GET` | `/api/music` | `source=soundcloud`, `q` | Tìm bài hát hoặc lấy danh sách đề xuất |
 | `GET` | `/api/music/stream` | `source`, `url` | Resolve và stream audio tới trình phát |
 | `GET` | `/api/music/download` | `source`, `url`, `title` | Tải bài hát về máy với tên file an toàn |
+| `POST` | `/api/database` | `action`, `token`, payload | Đọc và ghi dữ liệu Neon sau khi xác thực Firebase |
 | `POST` | `/api/notify/photo` | `itemId`, `senderUid` | Thông báo ảnh chung mới |
 | `POST` | `/api/notify/locket` | `itemId`, `senderUid` | Thông báo bài Locket mới |
 | `POST` | `/api/notify/chat` | `itemId`, `senderUid` | Thông báo tin nhắn mới |
@@ -116,9 +116,9 @@ flowchart LR
 
 Các notify route yêu cầu Firebase ID token hợp lệ. Server kiểm tra UID, quan hệ ghép đôi và document trước khi gửi FCM; không nên gọi trực tiếp từ client không đăng nhập.
 
-### Google Apps Script Web App
+### Neon Database API
 
-Tất cả thao tác dùng `POST` tới URL `NEXT_PUBLIC_APPS_SCRIPT_URL`. Client gửi `{ action, token, ...payload }`; server nội bộ gửi `{ action, secret, ...payload }`.
+Tất cả thao tác dùng `POST /api/database`. Client gửi `{ action, token, ...payload }`; Next.js xác thực Firebase token, kiểm tra quyền cặp đôi rồi mới truy cập Neon. `DATABASE_URL` chỉ tồn tại ở server.
 
 | Action | Payload | Kết quả |
 |---|---|---|
@@ -164,7 +164,7 @@ Phản hồi chuẩn:
 | `couples/{coupleId}/wishItems` | Danh sách mong muốn |
 | `couples/{coupleId}/coupleChallenges` | Thử thách và lịch sử check-in |
 
-Google Sheets lưu các document dưới dạng `path + JSON` trong sheet `Records`. Đây là cấu trúc logic của API, không phải các tab Sheet riêng biệt.
+Neon lưu document dưới dạng `path + JSONB` trong bảng `love_days_records`, nhờ đó các màn hình vẫn dùng chung lớp tương thích Firestore hiện tại.
 
 ## 🚀 Cài đặt
 
@@ -194,9 +194,8 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 NEXT_PUBLIC_FIREBASE_VAPID_KEY=
 
-# Google Apps Script database
-NEXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
-SERVER_SECRET=
+# Neon PostgreSQL — chỉ dùng ở server
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/neondb?sslmode=require
 
 # Cloudinary unsigned upload
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
@@ -208,26 +207,14 @@ APP_URL=https://your-domain.example
 CRON_SECRET=
 ```
 
-Các biến `NEXT_PUBLIC_*` được gửi tới trình duyệt và không phải server secret. Tuyệt đối không đưa Service Account JSON, private key, `SERVER_SECRET` hoặc `CRON_SECRET` vào mã nguồn.
+Các biến `NEXT_PUBLIC_*` được gửi tới trình duyệt và không phải server secret. Tuyệt đối không đưa `DATABASE_URL`, Service Account JSON, private key hoặc `CRON_SECRET` vào mã nguồn.
 
-## ⚡ Thiết lập Google Apps Script
+## ⚡ Thiết lập Neon
 
-1. Tạo một Google Sheet mới.
-2. Mở **Extensions → Apps Script**.
-3. Sao chép [`google-apps-script/Code.gs`](google-apps-script/Code.gs) và [`google-apps-script/appsscript.json`](google-apps-script/appsscript.json).
-4. Trong **Project Settings → Script Properties**, tạo:
-
-```text
-SPREADSHEET_ID=<ID của Google Sheet>
-FIREBASE_API_KEY=<Firebase Web API Key>
-SERVER_SECRET=<chuỗi bí mật dài và ngẫu nhiên>
-```
-
-5. Chọn **Deploy → New deployment → Web app**.
-6. Đặt **Execute as: Me** và **Who has access: Anyone**.
-7. Sao chép URL kết thúc bằng `/exec` vào `NEXT_PUBLIC_APPS_SCRIPT_URL`.
-
-Sau mỗi lần sửa `Code.gs`, chọn **Deploy → Manage deployments → Edit → New version → Deploy**. URL `/exec` được giữ nguyên.
+1. Tạo project Neon và sao chép pooled connection string.
+2. Đặt connection string vào `DATABASE_URL` trong `.env.local` và môi trường production.
+3. Chạy `npm run setup:neon` để tạo bảng và index.
+4. Nếu đang có dữ liệu Apps Script cũ, giữ tạm `NEXT_PUBLIC_APPS_SCRIPT_URL` và `SERVER_SECRET`, sau đó chạy `npm run migrate:apps-script-to-neon` đúng một lần.
 
 ## ☁️ Thiết lập Cloudinary
 
@@ -269,10 +256,9 @@ Sau khi triển khai:
 src/
 ├── app/                    # Pages và Next.js API Routes
 ├── components/             # Giao diện, providers và tính năng
-├── lib/                    # Firebase, Apps Script, Cloudinary, thông báo
+├── lib/                    # Firebase, Neon, Cloudinary, thông báo
 └── types/                  # Kiểu dữ liệu dùng chung
 
-google-apps-script/         # Database API chạy trên Google Apps Script
 public/                     # PWA manifest, icons và assets
 scripts/                    # Công cụ migration dữ liệu
 worker/                     # Custom Service Worker

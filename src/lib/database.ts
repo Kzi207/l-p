@@ -77,7 +77,7 @@ class QuerySnapshot<T = DocumentData> {
 
 type SnapshotView<T> = DocumentSnapshot<T> | QuerySnapshot<T>;
 
-const endpoint = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL?.trim() || "";
+const endpoint = "/api/database";
 const inflightReads = new Map<string, Promise<unknown>>();
 // Reuse the last successful value when a listener is recreated after an auth
 // transition. A network refresh still starts immediately in the background.
@@ -133,7 +133,6 @@ function hydrate(value: unknown): unknown {
 }
 
 async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promise<T> {
-  if (!endpoint) throw new Error("Thiếu NEXT_PUBLIC_APPS_SCRIPT_URL.");
   const user = auth?.currentUser;
   if (!user) throw new Error("Bạn cần đăng nhập lại.");
   const token = await Promise.race([
@@ -141,28 +140,28 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
     new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Phiên đăng nhập phản hồi quá lâu. Hãy mở lại ứng dụng.")), 8_000)),
   ]);
   const body = JSON.stringify({ action, token, ...(serialize(payload) as JsonRecord) });
-  let response: Response | null = null;
-  let text = "";
   const safeToRetry = action === "get" || action === "list" || action === "exportCouple";
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const separator = endpoint.includes("?") ? "&" : "?";
     try {
-      response = await fetch(`${endpoint}${separator}_=${Date.now()}`, {
+      const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        headers: { "Content-Type": "application/json" },
         body,
         cache: "no-store",
-        credentials: "omit",
-        redirect: "follow",
+        credentials: "same-origin",
         signal: AbortSignal.timeout(attempt === 0 ? 10_000 : 15_000),
       });
-      text = await response.text();
-      if (!text.trimStart().startsWith("<") || attempt === 1) break;
+      const result = await response.json() as { ok?: boolean; data?: T; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error || `Máy chủ dữ liệu lỗi ${response.status}.`);
+      if (!("data" in result)) throw new Error("Máy chủ dữ liệu trả về thiếu nội dung.");
+      return hydrate(result.data) as T;
     } catch (caught) {
-      if (safeToRetry && attempt === 0 && navigator.onLine) {
+      const retryable = !(caught instanceof Error) || /abort|timed?\s*out|fetch|network|kết nối/i.test(caught.message);
+      if (safeToRetry && retryable && attempt === 0 && navigator.onLine) {
         await new Promise((resolve) => window.setTimeout(resolve, 500));
         continue;
       }
+      if (!retryable && caught instanceof Error) throw caught;
       const timedOut = caught instanceof Error && (caught.name === "TimeoutError" || caught.name === "AbortError" || /abort|timed?\s*out/i.test(caught.message));
       throw new Error(timedOut
         ? "Kết nối máy chủ dữ liệu quá thời gian. Ứng dụng sẽ tự thử lại."
@@ -170,22 +169,8 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
           ? "Không thể kết nối máy chủ dữ liệu. Ứng dụng sẽ tự thử lại."
           : "Thiết bị đang mất mạng. Dữ liệu sẽ tự đồng bộ khi có kết nối lại.");
     }
-    await new Promise((resolve) => window.setTimeout(resolve, 450));
   }
-  if (!response) throw new Error("Không thể kết nối Apps Script.");
-  let result: { ok?: boolean; data?: T; error?: string };
-  try {
-    result = JSON.parse(text) as typeof result;
-  } catch {
-    const html = text.trimStart().startsWith("<");
-    const loginPage = html && /accounts\.google\.com|servicelogin|sign in/i.test(text);
-    throw new Error(loginPage ? "Apps Script đang yêu cầu đăng nhập Google. Hãy deploy Web App với quyền truy cập Anyone." : html ? "Apps Script tạm trả về trang HTML sau 2 lần thử. Hãy đóng hẳn PWA rồi mở lại." : "Apps Script trả dữ liệu không hợp lệ.");
-  }
-  if (!response.ok || !result.ok) throw new Error(result.error || `Apps Script lỗi ${response.status}.`);
-  if (!("data" in result)) {
-    throw new Error("Apps Script đang chạy Code.gs cũ hoặc sai deployment. Hãy tạo New version và deploy lại URL /exec.");
-  }
-  return hydrate(result.data) as T;
+  throw new Error("Không thể kết nối máy chủ dữ liệu.");
 }
 
 async function request<T>(action: string, payload: JsonRecord = {}): Promise<T> {
@@ -302,7 +287,7 @@ export function onSnapshot<T = DocumentData>(
       }
     } catch (caught) {
       if (!active) return;
-      const error = (caught instanceof Error ? caught : new Error("Không thể đồng bộ Google Sheets.")) as DatabaseError;
+      const error = (caught instanceof Error ? caught : new Error("Không thể đồng bộ Neon.")) as DatabaseError;
       if (!error.code) error.code = "apps-script/unavailable";
       onError?.(error);
       window.clearTimeout(retryTimer);

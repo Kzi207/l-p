@@ -12,7 +12,9 @@ export const firebaseConfig = {
 };
 
 export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
-export const isDatabaseConfigured = Boolean(process.env.NEXT_PUBLIC_APPS_SCRIPT_URL?.trim());
+// Neon is accessed only by the internal Next.js API, so DATABASE_URL must never
+// be exposed through a NEXT_PUBLIC variable in the browser bundle.
+export const isDatabaseConfigured = true;
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
@@ -24,8 +26,8 @@ if (isFirebaseConfigured) {
 
 export const firebaseApp = app;
 export const auth = authInstance;
-// Dữ liệu ứng dụng nằm trong Google Sheets qua Apps Script. Giữ một marker
-// truthy để các màn hình cũ vẫn có thể kiểm tra cấu hình trước khi gọi API.
+// Dữ liệu ứng dụng nằm trong Neon qua API nội bộ. Giữ một marker để các màn hình
+// hiện tại tiếp tục dùng lớp tương thích Firestore mà không cần biết driver server.
 export const db: DatabaseMarker | null = isFirebaseConfigured && isDatabaseConfigured
   ? ({ __googleSheetsDatabase: true } as const)
   : null;

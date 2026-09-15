@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminGet, adminWrite, adminServerTimestamp } from "@/lib/appsScriptAdminDb";
+import { adminGet, adminWrite, adminServerTimestamp } from "@/lib/neon-admin-db";
 import { sendPushToUser } from "@/lib/sendPushNotification";
 import { ApiAuthError, verifyAuthToken } from "@/lib/verifyAuthToken";
 

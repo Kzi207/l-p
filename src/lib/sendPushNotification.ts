@@ -1,4 +1,4 @@
-import { adminGet, adminWrite } from "@/lib/appsScriptAdminDb";
+import { adminGet, adminWrite } from "@/lib/neon-admin-db";
 import { getAdminMessaging } from "@/lib/firebaseAdmin";
 
 export interface PushResult {

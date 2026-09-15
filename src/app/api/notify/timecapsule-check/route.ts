@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import { adminCollectionGroup, adminGet, adminServerTimestamp, adminWrite } from "@/lib/appsScriptAdminDb";
+import { adminCollectionGroup, adminGet, adminServerTimestamp, adminWrite } from "@/lib/neon-admin-db";
 import { sendPushToUser } from "@/lib/sendPushNotification";
 
 export const runtime = "nodejs";

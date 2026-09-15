@@ -72,7 +72,7 @@ export function NotificationCenter({ open, onClose, user, coupleId, pushStatus, 
   useEffect(() => {
     if (!db) {
       setLoading(false);
-      setError("Google Sheets chưa sẵn sàng.");
+      setError("Neon chưa sẵn sàng.");
       return;
     }
 
