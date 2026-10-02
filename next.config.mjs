@@ -18,9 +18,8 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["youtubei.js", "ffmpeg-static"],
   },
-  // Tách output production khỏi cache dev để `next build` không làm hỏng
-  // vendor chunks khi một dev server đang chạy song song trên Windows.
-  distDir: process.env.NODE_ENV === "production" ? ".next-build" : ".next",
+  // Chỉ dùng distDir custom khi dev local trên Windows (set CUSTOM_DIST_DIR=1 trong .env.development.local)
+  ...(process.env.CUSTOM_DIST_DIR === "1" ? { distDir: ".next-build" } : {}),
   images: {
     remotePatterns: [
       {
