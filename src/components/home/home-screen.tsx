@@ -44,6 +44,7 @@ export function HomeScreen({ user }: { user: User }) {
   }, [partner, profile]);
 
   if (coupleLoading) return <main className="grid min-h-dvh place-items-center"><span className="font-handwritten text-2xl text-[#a56f78]">Đang mở không gian riêng...</span></main>;
+  if (!couple && coupleError) return <main className="grid min-h-dvh place-items-center px-5"><section className="soft-card max-w-md p-7 text-center"><h1 className="font-display text-2xl font-bold">Chưa kết nối được dữ liệu</h1><p className="mt-2 text-sm leading-6 text-[#806e65]">{coupleError}</p><button className="primary-button mx-auto mt-5" type="button" onClick={() => window.location.reload()}><RefreshCw className="size-4" />Thử kết nối lại</button></section></main>;
   if (!couple) return <PairingScreen user={user} />;
   if (!couple.startDate) return <CoupleSetup />;
 

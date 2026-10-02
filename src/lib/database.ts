@@ -82,6 +82,11 @@ const inflightReads = new Map<string, Promise<unknown>>();
 // Reuse the last successful value when a listener is recreated after an auth
 // transition. A network refresh still starts immediately in the background.
 const snapshotCache = new Map<string, SnapshotView<DocumentData>>();
+const LOCAL_WRITE_EVENT = "love-days:database-write";
+
+function notifyLocalWrites(paths: string[]) {
+  window.dispatchEvent(new CustomEvent(LOCAL_WRITE_EVENT, { detail: { paths } }));
+}
 
 function isReference(value: unknown): value is Reference {
   return Boolean(value && typeof value === "object" && (value as Reference).__databaseReference);
@@ -140,8 +145,7 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
     new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Phiên đăng nhập phản hồi quá lâu. Hãy mở lại ứng dụng.")), 8_000)),
   ]);
   const body = JSON.stringify({ action, token, ...(serialize(payload) as JsonRecord) });
-  const safeToRetry = action === "get" || action === "list" || action === "exportCouple";
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 1; attempt += 1) {
     try {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -149,7 +153,7 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
         body,
         cache: "no-store",
         credentials: "same-origin",
-        signal: AbortSignal.timeout(attempt === 0 ? 10_000 : 15_000),
+        signal: AbortSignal.timeout(8_000),
       });
       const result = await response.json() as { ok?: boolean; data?: T; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error || `Máy chủ dữ liệu lỗi ${response.status}.`);
@@ -157,10 +161,6 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
       return hydrate(result.data) as T;
     } catch (caught) {
       const retryable = !(caught instanceof Error) || /abort|timed?\s*out|fetch|network|kết nối/i.test(caught.message);
-      if (safeToRetry && retryable && attempt === 0 && navigator.onLine) {
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-        continue;
-      }
       if (!retryable && caught instanceof Error) throw caught;
       const timedOut = caught instanceof Error && (caught.name === "TimeoutError" || caught.name === "AbortError" || /abort|timed?\s*out/i.test(caught.message));
       throw new Error(timedOut
@@ -231,14 +231,17 @@ export async function getDocs<T = DocumentData>(reference: Reference) {
 
 export async function setDoc(reference: Reference, data: object, options?: { merge?: boolean }) {
   await request("write", { operation: { type: "set", path: reference.path, data: data as JsonRecord, merge: Boolean(options?.merge) } });
+  notifyLocalWrites([reference.path]);
 }
 
 export async function updateDoc(reference: Reference, data: object) {
   await request("write", { operation: { type: "update", path: reference.path, data: data as JsonRecord } });
+  notifyLocalWrites([reference.path]);
 }
 
 export async function deleteDoc(reference: Reference) {
   await request("write", { operation: { type: "delete", path: reference.path } });
+  notifyLocalWrites([reference.path]);
 }
 
 export async function addDoc(reference: Reference, data: object) {
@@ -258,6 +261,7 @@ export function onSnapshot<T = DocumentData>(
 ) {
   let active = true;
   let running = false;
+  let refreshQueued = false;
   let lastPayload = "";
   let retryTimer: number | undefined;
   let retryDelay = 1_500;
@@ -271,7 +275,11 @@ export function onSnapshot<T = DocumentData>(
   }
 
   const refresh = async () => {
-    if (!active || running) return;
+    if (!active) return;
+    if (running) {
+      refreshQueued = true;
+      return;
+    }
     running = true;
     try {
       const snapshot = isDocument ? await getDoc<T>(reference) : await getDocs<T>(reference);
@@ -288,13 +296,17 @@ export function onSnapshot<T = DocumentData>(
     } catch (caught) {
       if (!active) return;
       const error = (caught instanceof Error ? caught : new Error("Không thể đồng bộ Neon.")) as DatabaseError;
-      if (!error.code) error.code = "apps-script/unavailable";
+      if (!error.code) error.code = "neon/unavailable";
       onError?.(error);
       window.clearTimeout(retryTimer);
       retryTimer = window.setTimeout(() => void refresh(), retryDelay);
       retryDelay = Math.min(retryDelay * 2, 10_000);
     } finally {
       running = false;
+      if (active && refreshQueued) {
+        refreshQueued = false;
+        void refresh();
+      }
     }
   };
 
@@ -307,9 +319,16 @@ export function onSnapshot<T = DocumentData>(
     timer = window.setTimeout(async () => { await refresh(); schedule(); }, document.hidden ? 60_000 : foregroundDelay);
   };
   const resume = () => { if (!document.hidden) void refresh(); };
+  const localWrite = (event: Event) => {
+    const paths = (event as CustomEvent<{ paths?: unknown }>).detail?.paths;
+    if (!Array.isArray(paths)) return;
+    const prefix = `${reference.path}/`;
+    if (paths.some((path) => typeof path === "string" && (path === reference.path || path.startsWith(prefix)))) void refresh();
+  };
   schedule();
   window.addEventListener("focus", resume);
   window.addEventListener("online", resume);
+  window.addEventListener(LOCAL_WRITE_EVENT, localWrite);
   document.addEventListener("visibilitychange", resume);
   return () => {
     active = false;
@@ -317,6 +336,7 @@ export function onSnapshot<T = DocumentData>(
     window.clearTimeout(retryTimer);
     window.removeEventListener("focus", resume);
     window.removeEventListener("online", resume);
+    window.removeEventListener(LOCAL_WRITE_EVENT, localWrite);
     document.removeEventListener("visibilitychange", resume);
   };
 }
@@ -338,6 +358,9 @@ export async function runTransaction<T>(
     delete: (reference: Reference) => operations.push({ type: "delete", path: reference.path }),
   };
   const result = await executor(transaction);
-  if (operations.length > 0) await request("batch", { operations });
+  if (operations.length > 0) {
+    await request("batch", { operations });
+    notifyLocalWrites(operations.map((operation) => operation.path));
+  }
   return result;
 }

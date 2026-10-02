@@ -1,9 +1,7 @@
-const clientId = "Pb72ranhoyt6gw7hM7TkzUItXlMWSNSo";
-
-function getClientId() {
-  if (!clientId) throw new Error("Thiếu SOUNDCLOUD_CLIENT_ID");
-  return clientId;
-}
+const clientIds = [
+  "tNiXK56A9yLDayzQ5DsBvqwiyhRLZZNv",
+  "tNiXK56A9yLDayzQ5DsBvqwiyhRLZZNv",
+];
 
 interface SoundCloudTrack {
   id: number | string;
@@ -20,9 +18,9 @@ interface SoundCloudTrack {
   };
 }
 
-function soundCloudUrl(path: string) {
+function soundCloudUrl(path: string, clientId: string) {
   const url = new URL(path, "https://api-v2.soundcloud.com");
-  url.searchParams.set("client_id", getClientId());
+  url.searchParams.set("client_id", clientId);
   return url;
 }
 
@@ -34,6 +32,21 @@ async function fetchSoundCloudJson<T>(url: URL, timeout = 30_000): Promise<T> {
   });
   if (!response.ok) throw new Error(`SoundCloud HTTP ${response.status}`);
   return response.json() as Promise<T>;
+}
+
+async function fetchWithFallback<T>(
+  buildUrl: (clientId: string) => URL,
+  timeout?: number
+): Promise<T> {
+  let lastError: unknown;
+  for (const clientId of clientIds) {
+    try {
+      return await fetchSoundCloudJson<T>(buildUrl(clientId), timeout);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
 }
 
 function formatDuration(milliseconds = 0) {
@@ -49,10 +62,12 @@ function formatDuration(milliseconds = 0) {
 export async function searchSoundCloud(query: string) {
   const isHome = !query || query.toLowerCase() === "home";
   const searchTerm = isHome ? "nhạc trẻ thịnh hành" : query;
-  const url = soundCloudUrl("/search/tracks");
-  url.searchParams.set("q", searchTerm);
-  url.searchParams.set("limit", "20");
-  const result = await fetchSoundCloudJson<{ collection?: SoundCloudTrack[] }>(url);
+  const result = await fetchWithFallback<{ collection?: SoundCloudTrack[] }>((clientId) => {
+    const url = soundCloudUrl("/search/tracks", clientId);
+    url.searchParams.set("q", searchTerm);
+    url.searchParams.set("limit", "20");
+    return url;
+  });
   const tracks = (result.collection || []).filter((track) => track.permalink_url).map((track) => ({
     id: String(track.id),
     title: track.title || "SoundCloud Track",
@@ -73,9 +88,13 @@ export async function searchSoundCloud(query: string) {
 
 async function resolveTrack(input: string) {
   const numericId = /^\d+$/.test(input.trim());
-  const url = numericId ? soundCloudUrl(`/tracks/${input.trim()}`) : soundCloudUrl("/resolve");
-  if (!numericId) url.searchParams.set("url", input.trim());
-  return fetchSoundCloudJson<SoundCloudTrack>(url);
+  return fetchWithFallback<SoundCloudTrack>((clientId) => {
+    const url = numericId
+      ? soundCloudUrl(`/tracks/${input.trim()}`, clientId)
+      : soundCloudUrl("/resolve", clientId);
+    if (!numericId) url.searchParams.set("url", input.trim());
+    return url;
+  });
 }
 
 export async function resolveSoundCloudAudio(input: string) {
@@ -85,9 +104,11 @@ export async function resolveSoundCloudAudio(input: string) {
   const selected = progressive || transcodings.find((item) => item.url);
   if (!selected?.url) throw new Error("SoundCloud track has no playable transcoding");
 
-  const transcodingUrl = new URL(selected.url);
-  transcodingUrl.searchParams.set("client_id", getClientId());
-  const result = await fetchSoundCloudJson<{ url?: string }>(transcodingUrl, 45_000);
+  const result = await fetchWithFallback<{ url?: string }>((clientId) => {
+    const url = new URL(selected.url!);
+    url.searchParams.set("client_id", clientId);
+    return url;
+  }, 45_000);
   if (!result.url) throw new Error("SoundCloud did not return an audio URL");
   const audioUrl = new URL(result.url);
   if (audioUrl.protocol !== "https:") throw new Error("SoundCloud returned an unsafe audio URL");

@@ -41,7 +41,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
     const loadingTimeout = window.setTimeout(() => {
       setLoading(false);
       setError("Không thể tải không gian riêng lúc này. Hãy kiểm tra mạng rồi thử lại.");
-    }, 15_000);
+    }, 8_000);
     const userRef = doc(db, "users", user.uid);
     const unsubscribe = onSnapshot(userRef, async (snapshot) => {
       window.clearTimeout(loadingTimeout);
@@ -100,7 +100,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
     const loadingTimeout = window.setTimeout(() => {
       setLoading(false);
       setError("Không thể tải thông tin ghép đôi lúc này. Hãy thử lại sau.");
-    }, 15_000);
+    }, 8_000);
     let unsubscribePartner: () => void = () => {};
     const unsubscribeCouple = onSnapshot(doc(database, "couples", coupleId), (snapshot) => {
       window.clearTimeout(loadingTimeout);

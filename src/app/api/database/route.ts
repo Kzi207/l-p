@@ -9,7 +9,9 @@ async function authenticate(token: unknown): Promise<DatabaseUser> {
   if (typeof token !== "string" || !token) throw new Error("Bạn cần đăng nhập lại.");
   try {
     if (process.env.FIREBASE_ADMIN_SA_BASE64?.trim()) {
-      const decoded = await getAdminAuth().verifyIdToken(token, true);
+      // Chữ ký và hạn token vẫn được kiểm tra; không gọi thêm API kiểm tra revoke
+      // ở mọi lần poll dữ liệu vì việc đó làm màn hình khởi động chậm đáng kể.
+      const decoded = await getAdminAuth().verifyIdToken(token);
       return { uid: decoded.uid };
     }
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
@@ -19,7 +21,7 @@ async function authenticate(token: unknown): Promise<DatabaseUser> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken: token }),
       cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(8_000),
     });
     const payload = await response.json() as { users?: Array<{ localId?: string }> };
     const uid = payload.users?.[0]?.localId;

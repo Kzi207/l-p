@@ -49,7 +49,7 @@ function connectionString() {
 }
 
 function sqlClient() {
-  return neon(connectionString());
+  return neon(connectionString(), { fetchOptions: { signal: AbortSignal.timeout(8_000) } });
 }
 
 export function ensureNeonSchema() {
