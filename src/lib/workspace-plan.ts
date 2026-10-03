@@ -45,7 +45,8 @@ export function planWorkspace(action: string, body: Data, uid: string, records: 
   const coupleId = randomUUID();
   const destination = `couples/${coupleId}`;
   put(destination, { memberIds: [ownerId, uid], mode: "shared", startDate: sources.find(source => source?.data.startDate)?.data.startDate ?? null, createdAt: stamp, inviteId });
-  for (const [sourceIndex, source] of sources.entries()) {
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
+    const source = sources[sourceIndex];
     if (!source) continue;
     const prefix = `${source.path}/`;
     const children = records.filter(record => record.path.startsWith(prefix));

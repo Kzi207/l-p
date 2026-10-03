@@ -145,7 +145,7 @@ export function TikTokDownloader() {
               </div>
               {downloadState && <p className="mt-3 rounded-2xl bg-[#f8f0ec] p-3 text-center text-xs font-semibold text-[#806e65]">{downloadState.message}</p>}
               <p className="mt-3 text-center text-[11px] leading-4 text-[#9b887e]">
-                Trên iPhone, nếu file không tự lưu hãy giữ ngón tay lên file trong trình duyệt rồi chọn "Tải về". Chỉ tải nội dung bạn có quyền sử dụng.
+                Trên iPhone, nếu file không tự lưu hãy giữ ngón tay lên file trong trình duyệt rồi chọn &quot;Tải về&quot;. Chỉ tải nội dung bạn có quyền sử dụng.
               </p>
             </div>
           </article>

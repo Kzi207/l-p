@@ -130,7 +130,7 @@ function validateCollectionPath(value: unknown) {
   return path;
 }
 
-function visibleData(_path: string, data: JsonRecord, _user: DatabaseUser) {
+function visibleData(data: JsonRecord) {
   return data;
 }
 
@@ -227,7 +227,7 @@ async function readOne(pathValue: unknown, user: DatabaseUser, records: StoredRe
   const index = indexRecords(records);
   const record = index.get(path) || null;
   authorize(user, path, "read", record?.data || null, index, {});
-  return { id: path.split("/").pop() || "", data: record ? visibleData(path, record.data, user) : null, version: record?.updatedAt || 0 };
+  return { id: path.split("/").pop() || "", data: record ? visibleData(record.data) : null, version: record?.updatedAt || 0 };
 }
 
 async function readList(pathValue: unknown, constraintsValue: unknown, user: DatabaseUser, records: StoredRecord[]) {
@@ -247,7 +247,7 @@ async function readList(pathValue: unknown, constraintsValue: unknown, user: Dat
   if (ordering) matches.sort((left, right) => compareValues(getField(left.data, String(ordering.field || "")), getField(right.data, String(ordering.field || ""))) * (ordering.direction === "desc" ? -1 : 1));
   const limiter = constraints.find((item) => item?.kind === "limit");
   if (limiter) matches = matches.slice(0, Math.min(500, Math.max(0, Number(limiter.count) || 0)));
-  return matches.map((record) => ({ id: record.path.split("/").pop() || "", data: visibleData(record.path, record.data, user), version: record.updatedAt }));
+  return matches.map((record) => ({ id: record.path.split("/").pop() || "", data: visibleData(record.data), version: record.updatedAt }));
 }
 
 async function commit(operationsValue: unknown, user: DatabaseUser, records: StoredRecord[]) {
@@ -338,7 +338,7 @@ export async function executeDatabaseAction(body: JsonRecord, user: DatabaseUser
       if (!record.path.startsWith(prefix)) continue;
       const relative = record.path.slice(prefix.length).split("/");
       if (relative.length !== 2) continue;
-      (data[relative[0]] ||= []).push({ id: relative[1], data: visibleData(record.path, record.data, user), version: record.updatedAt });
+      (data[relative[0]] ||= []).push({ id: relative[1], data: visibleData(record.data), version: record.updatedAt });
     }
     return { coupleId, exportedAt: Date.now(), data };
   }
