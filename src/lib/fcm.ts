@@ -67,7 +67,10 @@ export async function getFCMToken(): Promise<string> {
   if (typeof window === "undefined" || !firebaseApp || !(await isSupported()) || !("serviceWorker" in navigator)) {
     throw new Error("Trình duyệt này chưa hỗ trợ thông báo đẩy.");
   }
-  const permission = await Notification.requestPermission();
+  let permission: NotificationPermission = Notification.permission;
+  if (permission !== "granted") {
+    permission = await Notification.requestPermission();
+  }
   if (permission !== "granted") {
     throw new Error("Người dùng chưa cho phép thông báo.");
   }

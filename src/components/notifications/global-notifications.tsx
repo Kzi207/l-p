@@ -32,23 +32,25 @@ export function GlobalNotifications() {
       return;
     }
 
+    setPushStatus("granted");
+
     // Firestore và hồ sơ cặp đôi được ưu tiên trước. Không chạy FCM đồng thời
     // với màn hình “Đang mở không gian riêng...”.
     if (loading || !couple) {
-      setPushStatus("idle");
       return;
     }
 
     let active = true;
     const timer = window.setTimeout(() => {
-      setPushStatus("loading");
       setPushError("");
       registerForPushNotifications(user.uid).then((status) => {
         if (active) setPushStatus(status);
       }).catch((caught) => {
         if (!active) return;
-        setPushStatus("idle");
-        setPushError(caught instanceof Error ? caught.message : "Token thông báo đã mất. Hãy đăng ký lại.");
+        if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+          setPushStatus("idle");
+          setPushError(caught instanceof Error ? caught.message : "Token thông báo đã mất. Hãy đăng ký lại.");
+        }
       });
     }, 1_500);
     return () => {
