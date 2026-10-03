@@ -26,8 +26,18 @@ export async function sendPushToUser(uid: string, title: string, body: string, r
   const destination = absoluteRoute(route);
   const response = await getAdminMessaging().sendEachForMulticast({
     tokens,
+    notification: {
+      title,
+      body,
+    },
     data: { ...extraData, title, body, route, url: destination },
     webpush: {
+      notification: {
+        title,
+        body,
+        icon: "/icon.svg",
+        badge: "/icon.svg",
+      },
       headers: { Urgency: extraData.type === "message" ? "high" : "normal" },
       fcmOptions: { link: destination },
     },

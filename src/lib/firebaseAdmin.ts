@@ -15,19 +15,41 @@ interface RenderServiceAccount {
 }
 
 function decodeServiceAccount() {
-  try {
-    const encoded = requiredEnvironment("FIREBASE_ADMIN_SA_BASE64").trim();
-    const account = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as RenderServiceAccount;
-    if (!account.project_id || !account.client_email || !account.private_key) throw new Error("Service Account thiếu trường bắt buộc.");
-    return {
-      projectId: account.project_id,
-      clientEmail: account.client_email,
-      privateKey: account.private_key,
-    };
-  } catch (caught) {
-    if (caught instanceof Error && caught.message.startsWith("Thiếu biến")) throw caught;
-    throw new Error("FIREBASE_ADMIN_SA_BASE64 không phải Service Account JSON base64 hợp lệ.");
+  const encoded = process.env.FIREBASE_ADMIN_SA_BASE64?.trim();
+  if (encoded) {
+    try {
+      const account = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as RenderServiceAccount;
+      if (!account.project_id || !account.client_email || !account.private_key) throw new Error("Service Account thiếu trường bắt buộc.");
+      return {
+        projectId: account.project_id,
+        clientEmail: account.client_email,
+        privateKey: account.private_key,
+      };
+    } catch (caught) {
+      if (caught instanceof Error && caught.message.startsWith("Service Account")) throw caught;
+      throw new Error("FIREBASE_ADMIN_SA_BASE64 không phải Service Account JSON base64 hợp lệ.");
+    }
   }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("node:fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("node:path");
+    const localFile = path.resolve(process.cwd(), "serviceAccountKey.json");
+    if (fs.existsSync(localFile)) {
+      const account = JSON.parse(fs.readFileSync(localFile, "utf8")) as RenderServiceAccount;
+      if (account.project_id && account.client_email && account.private_key) {
+        return {
+          projectId: account.project_id,
+          clientEmail: account.client_email,
+          privateKey: account.private_key,
+        };
+      }
+    }
+  } catch { /* ignore fallback errors */ }
+
+  throw new Error("Thiếu biến môi trường FIREBASE_ADMIN_SA_BASE64.");
 }
 
 /** Khởi tạo Admin SDK đúng một lần trong tiến trình Next.js chạy trên Render. */
