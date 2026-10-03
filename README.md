@@ -112,7 +112,17 @@ flowchart LR
 | `POST` | `/api/notify/chat` | `itemId`, `senderUid` | Thông báo tin nhắn mới |
 | `POST` | `/api/notify/memory` | `itemId`, `senderUid` | Thông báo kỷ niệm mới |
 | `POST` | `/api/notify/phase-one` | `kind`, `itemId`, `senderUid` | Thông báo nhật ký, lịch đôi hoặc Time Capsule |
-| `POST` | `/api/notify/timecapsule-check` | Header chứa `CRON_SECRET` | Cron kiểm tra lịch nhắc và hộp thư đến ngày mở |
+| `POST` | `/api/notify/calendar-check` | `x-cron-secret: CRON_SECRET` hoặc Firebase ID token | Cron nhắc lịch; token người dùng chỉ kiểm tra lịch của chính họ |
+
+### Nhắc lịch đến giờ
+
+Workflow cũ “Kiểm tra thư tới ngày mở” đã được bỏ vì gọi API `/api/notify/timecapsule-check` không còn tồn tại (HTTP 404). Deploy phiên bản có `/api/notify/calendar-check` trước, sau đó chạy workflow **Nhắc lịch** từ nhánh mặc định đã cập nhật; không chạy lại bản workflow cũ trong lịch sử Actions.
+
+- Bật thông báo trên từng thiết bị trước khi dùng. Lịch cá nhân nhắc người tạo; lịch “Cả hai” nhắc các thành viên hiện tại. Mọi lịch đều nhắc giờ bắt đầu; chọn nhắc trước 1/3/7 ngày sẽ gửi thêm vào cùng giờ Việt Nam của ngày đó.
+- Khi ứng dụng đang mở, kiểm tra mỗi 30 giây. Khi đóng ứng dụng, cần tác vụ bên ngoài gọi `POST /api/notify/calendar-check` với header `x-cron-secret` khớp `CRON_SECRET` trên máy chủ.
+- Workflow `.github/workflows/calendar-reminders.yml` dùng repository secrets `RENDER_APP_URL` và `CRON_SECRET`. Sau khi deploy và đưa workflow lên nhánh mặc định, chạy thử bằng **Actions → Nhắc lịch → Run workflow**. Workflow chạy mỗi 5 phút và có thể bị GitHub trì hoãn; đây không phải cam kết gửi đúng phút. Để nhắc sát giờ hơn, cấu hình dịch vụ cron gọi API mỗi phút và dùng máy chủ không ngủ.
+- Chỉ gửi các lần nhắc trễ dưới 1 giờ để tránh dồn thông báo cũ. Có khóa gửi theo sự kiện, giờ hẹn và người nhận; lần gửi thất bại hoặc chưa có token được thử lại trong khoảng này. Push đã được FCM chấp nhận không đảm bảo thiết bị hiển thị ngay. Nếu tiến trình dừng sau khi gửi nhưng trước khi ghi nhận thành công, lần thử lại có thể gửi trùng.
+- Kiểm tra logic: `node scripts/test-calendar-reminders.cjs` (giả lập cơ sở dữ liệu và FCM, không gửi thông báo thật).
 
 Các notify route yêu cầu Firebase ID token hợp lệ. Server kiểm tra UID, quan hệ ghép đôi và document trước khi gửi FCM; không nên gọi trực tiếp từ client không đăng nhập.
 

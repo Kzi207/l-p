@@ -9,7 +9,8 @@ import { db, firebaseApp } from "@/lib/firebase";
 import { flushNotificationQueue } from "@/lib/notification-client";
 
 async function showSystemNotification(title: string, body: string, url: string, tag: string) {
-  const registration = await navigator.serviceWorker.getRegistration("/");
+  const registration = await navigator.serviceWorker.getRegistration("/")
+    || await navigator.serviceWorker.getRegistration("/push-notifications/");
   if (!registration) return;
   await registration.showNotification(title, {
     body,
@@ -23,6 +24,37 @@ async function showSystemNotification(title: string, body: string, url: string, 
 export function PushNotificationListener() {
   const { user } = useAuth();
   const { couple } = useCoupleSpace();
+
+  useEffect(() => {
+    if (!user || !couple?.id) return;
+    let busy = false;
+    const controller = new AbortController();
+    const check = async () => {
+      if (busy || document.hidden || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      busy = true;
+      try {
+        const token = await user.getIdToken();
+        await fetch("/api/notify/calendar-check", {
+          method: "POST", headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+      } catch { /* Retry on the next tick or when connectivity returns. */ }
+      finally { busy = false; }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 30_000);
+    const resume = () => void check();
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", resume);
+    window.addEventListener("love-days-push-enabled", resume);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("love-days-push-enabled", resume);
+    };
+  }, [user, couple?.id]);
 
   useEffect(() => {
     if (!user) return;

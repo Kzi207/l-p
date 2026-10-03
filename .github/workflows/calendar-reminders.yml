@@ -1,0 +1,35 @@
+name: Nhắc lịch
+
+on:
+  schedule:
+    - cron: "2-59/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: calendar-reminders
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Kiểm tra lịch đến giờ
+        env:
+          APP_URL: ${{ secrets.RENDER_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::Configure repository secrets RENDER_APP_URL and CRON_SECRET before running reminders."
+            exit 1
+          fi
+          curl --silent --show-error --fail-with-body --retry 3 --retry-delay 10 --max-time 65 \
+            --request POST --header "x-cron-secret: $CRON_SECRET" \
+            --output "$RUNNER_TEMP/calendar-response.txt" \
+            --write-out 'HTTP %{http_code}\n' \
+            "${APP_URL%/}/api/notify/calendar-check" || {
+              echo "::error::Calendar check failed. HTTP 404: deploy the calendar-check API first and check RENDER_APP_URL. HTTP 401: check CRON_SECRET matches the server. HTTP 503: configure CRON_SECRET on the server."
+              exit 1
+            }
+          cat "$RUNNER_TEMP/calendar-response.txt"

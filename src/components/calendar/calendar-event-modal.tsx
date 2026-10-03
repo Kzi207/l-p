@@ -176,7 +176,8 @@ export function CalendarEventModal({ user, coupleId, authorName, initialDate, on
             <details open={isEdit && !!draft.notes}>
               <summary className="cursor-pointer text-sm font-semibold text-[#a56f78]">Ghi chú và nhắc lịch</summary>
               <div className="mt-3 grid gap-3">
-                <label className="text-xs font-bold">Nhắc lịch<select className="input-field mt-1" value={draft.remindDays} onChange={(e) => update(draft.id, { remindDays: Number(e.target.value) })}><option value={0}>Nhắc đúng ngày</option><option value={1}>Nhắc trước 1 ngày</option><option value={3}>Nhắc trước 3 ngày</option><option value={7}>Nhắc trước 7 ngày</option></select></label>
+                <label className="text-xs font-bold">Nhắc lịch<select className="input-field mt-1" value={draft.remindDays} onChange={(e) => update(draft.id, { remindDays: Number(e.target.value) })}><option value={0}>Nhắc giờ bắt đầu</option><option value={1}>Nhắc trước 1 ngày</option><option value={3}>Nhắc trước 3 ngày</option><option value={7}>Nhắc trước 7 ngày</option></select></label>
+                <p className="text-xs text-[#8f7b72]">Luôn nhắc khi bắt đầu. Nhắc trước sẽ gửi thêm vào cùng giờ của ngày đã chọn. Bật thông báo trên thiết bị để nhận nhắc lịch.</p>
                 <label className="text-xs font-bold">Ghi chú<textarea className="input-field mt-1 min-h-20" value={draft.notes} onChange={(e) => update(draft.id, { notes: e.target.value })} placeholder="Không bắt buộc" /></label>
               </div>
             </details>
