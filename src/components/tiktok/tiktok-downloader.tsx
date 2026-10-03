@@ -63,56 +63,34 @@ export function TikTokDownloader() {
     }
   }
 
-  async function saveMedia(mediaUrl: string, filename: string, key: string) {
+  // Dùng thẳng URL proxy — không fetch/await trước share, tránh mất user gesture
+  function saveMedia(mediaUrl: string, filename: string, key: string) {
     setError("");
-    setDownloadState({ key, message: "Đang chuẩn bị tệp..." });
-    let sharing = false;
-    try {
-      const response = await fetch(mediaDownloadUrl(mediaUrl, filename));
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error || "Không thể tải tệp này.");
-      }
+    setDownloadState({ key, message: "Đang tải tệp xuống..." });
 
-      const blob = await response.blob();
-      const file = new File([blob], filename, {
-        type: blob.type || (filename.endsWith(".mp4") ? "video/mp4" : "image/jpeg"),
-      });
-      const shareData = { files: [file], title: filename };
+    const downloadUrl = mediaDownloadUrl(mediaUrl, filename);
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
 
-      if (navigator.share && navigator.canShare?.(shareData)) {
-        setDownloadState({ key, message: "Hãy chọn “Lưu video” hoặc “Lưu hình ảnh”." });
-        sharing = true;
-        await navigator.share(shareData);
-        setDownloadState({ key, message: "Đã gửi tệp tới bảng chia sẻ." });
-        return;
-      }
-
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
-      setDownloadState({ key, message: "Đã tải tệp xuống thiết bị." });
-    } catch (reason) {
-      if (sharing && reason instanceof DOMException && reason.name === "AbortError") {
-        setDownloadState(null);
-        return;
-      }
-      setDownloadState(null);
-      setError(friendlyRequestError(reason, "Không thể lưu tệp này."));
-    }
+    window.setTimeout(() => setDownloadState({ key, message: "Đã bắt đầu tải tệp xuống thiết bị." }), 800);
+    window.setTimeout(() => setDownloadState(null), 4000);
   }
 
   function downloadButton(mediaUrl: string, filename: string, key: string, label: string, primary = false) {
-    const isDownloading = downloadState?.key === key && downloadState.message === "Đang chuẩn bị tệp...";
+    const isActive = downloadState?.key === key;
     return (
-      <button type="button" className={primary ? "primary-button" : "secondary-button"} onClick={() => saveMedia(mediaUrl, filename, key)} disabled={isDownloading}>
-        {isDownloading ? <LoaderCircle className="size-5 animate-spin" /> : <Download className="size-5" />}
-        {isDownloading ? "Đang chuẩn bị..." : label}
+      <button
+        type="button"
+        className={primary ? "primary-button" : "secondary-button"}
+        onClick={() => saveMedia(mediaUrl, filename, key)}
+        disabled={isActive}
+      >
+        {isActive ? <LoaderCircle className="size-5 animate-spin" /> : <Download className="size-5" />}
+        {isActive ? "Đang tải..." : label}
       </button>
     );
   }
@@ -167,7 +145,7 @@ export function TikTokDownloader() {
               </div>
               {downloadState && <p className="mt-3 rounded-2xl bg-[#f8f0ec] p-3 text-center text-xs font-semibold text-[#806e65]">{downloadState.message}</p>}
               <p className="mt-3 text-center text-[11px] leading-4 text-[#9b887e]">
-                Trên iPhone, sau khi bấm lưu hãy chọn “Lưu video” hoặc “Lưu hình ảnh” trong bảng chia sẻ để tệp xuất hiện trong ứng dụng Ảnh. Chỉ tải nội dung bạn có quyền sử dụng.
+                Trên iPhone, nếu file không tự lưu hãy giữ ngón tay lên file trong trình duyệt rồi chọn "Tải về". Chỉ tải nội dung bạn có quyền sử dụng.
               </p>
             </div>
           </article>
