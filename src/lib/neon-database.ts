@@ -287,16 +287,27 @@ async function commit(operationsValue: unknown, user: DatabaseUser, records: Sto
     : sql.query("DELETE FROM love_days_records WHERE path = $1", [path]));
   if (queries.length) {
     const scopes = Array.from(new Set([`users/${user.uid}`, ...operations.map(operation => operation.path.split("/").slice(0, 2).join("/"))]));
-    await sql.transaction([sql.query("LOCK TABLE love_days_records IN SHARE ROW EXCLUSIVE MODE"), snapshotGuard(sql, records, scopes), ...queries]);
+    await sql.transaction([sql.query("LOCK TABLE love_days_records IN SHARE ROW EXCLUSIVE MODE"), snapshotGuard(sql, records, scopes), ...queries]).catch(handleSnapshotError);
   }
   return { written: operations.length };
 }
 
+const SNAPSHOT_CONFLICT = "love_days_snapshot_conflict";
+
+function handleSnapshotError(error: unknown): never {
+  if (error instanceof Error && "code" in error && error.code === "22P02" && error.message.includes(`"${SNAPSHOT_CONFLICT}"`)) {
+    throw new Error("Dữ liệu vừa thay đổi. Hãy thử lại.");
+  }
+  throw error;
+}
+
 function snapshotGuard(sql: ReturnType<typeof sqlClient>, records: StoredRecord[], scopes: string[]) {
   const expected = Object.fromEntries(records.filter(record => scopes.includes(record.path.split("/").slice(0, 2).join("/"))).map(record => [record.path, record.data]));
-  return sql.query(`SELECT CASE WHEN COALESCE((SELECT jsonb_object_agg(path, data) FROM love_days_records
+  // Cast the result, not a constant CASE branch: PostgreSQL can evaluate
+  // constant casts during planning even when that branch would not be taken.
+  return sql.query(`SELECT CAST(CASE WHEN COALESCE((SELECT jsonb_object_agg(path, data) FROM love_days_records
     WHERE split_part(path, '/', 1) || '/' || split_part(path, '/', 2) = ANY($1::text[])), '{}'::jsonb) = $2::jsonb
-    THEN 1 ELSE CAST($3 AS integer) END`, [scopes, JSON.stringify(expected), "Dữ liệu vừa thay đổi. Hãy thử lại."]);
+    THEN '1' ELSE $3::text END AS integer)`, [scopes, JSON.stringify(expected), SNAPSHOT_CONFLICT]);
 }
 
 async function updateWorkspace(action: string, body: JsonRecord, user: DatabaseUser, records: StoredRecord[]) {
@@ -306,7 +317,7 @@ async function updateWorkspace(action: string, body: JsonRecord, user: DatabaseU
   const writes = Array.from(plan.changes, ([path, record]) => record
     ? sql.query("INSERT INTO love_days_records (path, data, created_at, updated_at) VALUES ($1, $2::jsonb, $3, $4) ON CONFLICT (path) DO UPDATE SET data = EXCLUDED.data, updated_at = EXCLUDED.updated_at", [path, JSON.stringify(record.data), record.createdAt, record.updatedAt])
     : sql.query("DELETE FROM love_days_records WHERE path = $1", [path]));
-  await sql.transaction([sql.query("LOCK TABLE love_days_records IN SHARE ROW EXCLUSIVE MODE"), snapshotGuard(sql, records, plan.scopes), ...writes]);
+  await sql.transaction([sql.query("LOCK TABLE love_days_records IN SHARE ROW EXCLUSIVE MODE"), snapshotGuard(sql, records, plan.scopes), ...writes]).catch(handleSnapshotError);
   return plan.result;
 }
 
