@@ -14,8 +14,9 @@ export async function verifyAuthToken(request: Request): Promise<DecodedIdToken>
   if (!match) throw new ApiAuthError("Thiếu Firebase ID token.");
 
   try {
-    return await getAdminAuth().verifyIdToken(match[1], true);
-  } catch {
+    return await getAdminAuth().verifyIdToken(match[1]);
+  } catch (caught) {
+    console.error("verifyAuthToken failed:", caught instanceof Error ? caught.message : caught);
     throw new ApiAuthError("Firebase ID token không hợp lệ hoặc đã hết hạn.");
   }
 }
