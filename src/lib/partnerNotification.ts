@@ -88,7 +88,8 @@ export async function notifyPartnerFromDocument(options: PartnerNotificationOpti
     }
   } catch (caught) {
     if (caught instanceof ApiAuthError) return NextResponse.json({ error: caught.message }, { status: caught.status });
-    console.error("Không thể gửi thông báo cho người ghép đôi:", caught);
-    return NextResponse.json({ error: "Máy chủ chưa thể gửi thông báo." }, { status: 500 });
+    const detail = caught instanceof Error ? caught.message : String(caught);
+    console.error("Không thể gửi thông báo cho người ghép đôi:", detail, caught);
+    return NextResponse.json({ error: "Máy chủ chưa thể gửi thông báo.", detail }, { status: 500 });
   }
 }

@@ -13,7 +13,7 @@ export async function sendDueCalendarReminders(scope?: { coupleId: string; uid: 
     ? (await adminList<ReminderEvent>(`couples/${scope.coupleId}/coupleEvents`)).map(event => ({ ...event, path: `couples/${scope.coupleId}/coupleEvents/${event.id}` }))
     : await adminCollectionGroup<ReminderEvent>("coupleEvents");
   const membersByCouple = new Map<string, unknown[]>();
-  const result = { sent: 0, skipped: 0, failed: 0 };
+  const result = { sent: 0, skipped: 0, failed: 0, errorDetails: [] as string[] };
   for (const event of events) {
     if (!event.path || !/^couples\/[^/]+\/coupleEvents\/[^/]+$/.test(event.path)) continue;
     const due = dueCalendarReminders(event.data, now);
@@ -52,7 +52,9 @@ export async function sendDueCalendarReminders(scope?: { coupleId: string; uid: 
         // Retry failures, including users who have not registered a device yet.
         await sql.query("DELETE FROM love_days_records WHERE path = $1 AND data->>'owner' = $2", [path, owner]);
         result.failed++;
-        console.error("Calendar reminder delivery failed", event.id, error instanceof Error ? error.message : "Unknown error");
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        result.errorDetails.push(msg);
+        console.error("Calendar reminder delivery failed", event.id, msg);
       }
     }
   }
