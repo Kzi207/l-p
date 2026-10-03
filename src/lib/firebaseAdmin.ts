@@ -2,11 +2,6 @@ import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
 
-function requiredEnvironment(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Thiếu biến môi trường ${name}.`);
-  return value;
-}
 
 interface RenderServiceAccount {
   project_id?: string;
