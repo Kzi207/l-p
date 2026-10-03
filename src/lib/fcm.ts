@@ -139,6 +139,9 @@ export async function registerForPushNotifications(userId: string): Promise<"gra
     setDoc(doc(db, "users", userId), { fcmTokens: arrayUnion(token) }, { merge: true }),
     "Đã lấy token nhưng chưa lưu được vào Firestore. Hãy kiểm tra mạng và Firestore Rules.",
   );
+  try {
+    localStorage.setItem("love-days:push-enabled", "true");
+  } catch { /* ignore storage errors */ }
   window.dispatchEvent(new Event("love-days-push-enabled"));
   return "granted";
 }

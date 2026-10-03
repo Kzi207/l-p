@@ -45,8 +45,8 @@ export function ProfileScreen() {
 
   useEffect(() => {
     if (typeof Notification === "undefined") setNotificationStatus("unsupported");
-    else if (Notification.permission === "granted") setNotificationStatus("granted");
     else if (Notification.permission === "denied") setNotificationStatus("denied");
+    else if (Notification.permission === "granted" || (typeof window !== "undefined" && localStorage.getItem("love-days:push-enabled") === "true")) setNotificationStatus("granted");
   }, []);
 
   if (!user) return <LoginScreen />;

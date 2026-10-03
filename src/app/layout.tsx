@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   applicationName: "Love Days",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", type: "image/png" }],
+    shortcut: [{ url: "/icon-192.png", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
     other: [{ rel: "mask-icon", url: "/icon.svg", color: "#d96578" }],
   },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Love Days" },

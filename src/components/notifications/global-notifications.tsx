@@ -14,7 +14,15 @@ export function GlobalNotifications() {
   const { couple, loading } = useCoupleSpace();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [pushStatus, setPushStatus] = useState<PushStatus>("idle");
+  const [pushStatus, setPushStatus] = useState<PushStatus>(() => {
+    if (typeof window === "undefined") return "idle";
+    if (typeof Notification === "undefined") return "unsupported";
+    if (Notification.permission === "denied") return "denied";
+    try {
+      if (Notification.permission === "granted" || localStorage.getItem("love-days:push-enabled") === "true") return "granted";
+    } catch { /* ignore */ }
+    return "idle";
+  });
   const [pushError, setPushError] = useState("");
 
   useEffect(() => {
@@ -25,9 +33,14 @@ export function GlobalNotifications() {
     }
     if (Notification.permission === "denied") {
       setPushStatus("denied");
+      try { localStorage.removeItem("love-days:push-enabled"); } catch { /* ignore */ }
       return;
     }
-    if (Notification.permission !== "granted") {
+    let isGranted = Notification.permission === "granted";
+    try {
+      if (!isGranted && localStorage.getItem("love-days:push-enabled") === "true") isGranted = true;
+    } catch { /* ignore */ }
+    if (!isGranted) {
       setPushStatus("idle");
       return;
     }

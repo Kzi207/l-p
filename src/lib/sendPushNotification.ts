@@ -35,8 +35,8 @@ export async function sendPushToUser(uid: string, title: string, body: string, r
       notification: {
         title,
         body,
-        icon: "/icon.svg",
-        badge: "/icon.svg",
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
       },
       headers: { Urgency: extraData.type === "message" ? "high" : "normal" },
       fcmOptions: { link: destination },

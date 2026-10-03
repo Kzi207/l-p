@@ -15,8 +15,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || notification.title || "Love Days 💌";
   const options = {
     body: data.body || notification.body || "Bạn có một điều mới từ người thương.",
-    icon: "/icon.svg",
-    badge: "/icon.svg",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
     tag: `${data.type || "love-days"}-${data.itemId || "new"}`,
     renotify: true,
     data: { url: data.url || data.route || message.fcmOptions?.link || "/" },
