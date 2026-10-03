@@ -1,6 +1,6 @@
 "use client";
 
-import { doc, onSnapshot, setDoc } from "@/lib/database";
+import { doc, ensureWorkspace, onSnapshot } from "@/lib/database";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { db } from "@/lib/firebase";
@@ -23,6 +23,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
   const [couple, setCouple] = useState<(CoupleInfo & { id: string }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const profileCoupleId = profile?.coupleId;
 
   useEffect(() => {
     if (!db || !user) {
@@ -43,37 +44,32 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
       setError("Không thể tải không gian riêng lúc này. Hãy kiểm tra mạng rồi thử lại.");
     }, 8_000);
     const userRef = doc(db, "users", user.uid);
+    let active = true;
+    let initializing = false;
     const unsubscribe = onSnapshot(userRef, async (snapshot) => {
-      window.clearTimeout(loadingTimeout);
-      if (!snapshot.exists()) {
-        const newProfile: UserDocument = {
-          displayName: user.displayName || user.email?.split("@")[0] || "Người thương",
-          email: user.email || "",
-          nickname: "",
-          birthday: "",
-          bio: "",
-          photoURL: user.photoURL || "",
-          coupleId: null,
-        };
-        // Hiển thị giao diện ngay; Firestore write có thể chờ mạng vô thời hạn
-        // trên lần mở đầu tiên nên không được dùng nó để khóa toàn bộ app.
-        setProfile(newProfile);
-        setCouple(null);
-        setPartner(null);
-        setError("");
-        setLoading(false);
-        void setDoc(userRef, newProfile).catch((caught) => {
-          setError(caught instanceof Error ? caught.message : "Chưa thể tạo hồ sơ lần đầu.");
-        });
+      if (!active) return;
+      const nextProfile = snapshot.exists() ? snapshot.data() as UserDocument : {
+        displayName: user.displayName || user.email?.split("@")[0] || "B?n",
+        email: user.email || "", photoURL: user.photoURL || "", coupleId: null,
+      };
+      if (!nextProfile.coupleId) {
+        if (initializing) return;
+        initializing = true;
+        setLoading(true);
+        try {
+          const space = await ensureWorkspace({ displayName: nextProfile.displayName, email: nextProfile.email, photoURL: nextProfile.photoURL || "" });
+          if (!active) return;
+          setProfile({ ...nextProfile, coupleId: space.coupleId });
+          setError("");
+        } catch (caught) {
+          if (!active) return;
+          setLoading(false);
+          setError(caught instanceof Error ? caught.message : "Ch?a th? m? kh?ng gian c? nh?n.");
+        } finally { initializing = false; window.clearTimeout(loadingTimeout); }
         return;
       }
-      const nextProfile = snapshot.data() as UserDocument;
+      window.clearTimeout(loadingTimeout);
       setProfile(nextProfile);
-      if (!nextProfile.coupleId) {
-        setCouple(null);
-        setPartner(null);
-        setLoading(false);
-      }
       setError("");
     }, (caught) => {
       window.clearTimeout(loadingTimeout);
@@ -82,20 +78,22 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
     });
     return () => {
       window.clearTimeout(loadingTimeout);
+      active = false;
       unsubscribe();
     };
   }, [user]);
 
   useEffect(() => {
-    if (!db || !user || !profile) return;
-    if (!profile.coupleId) {
+    if (!db || !user || profileCoupleId === undefined) return;
+    if (!profileCoupleId) {
       setCouple(null);
       setPartner(null);
       setLoading(false);
       return;
     }
     const database = db;
-    const coupleId = profile.coupleId;
+    const coupleId = profileCoupleId;
+    setPartner(null);
     setLoading(true);
     const loadingTimeout = window.setTimeout(() => {
       setLoading(false);
@@ -116,6 +114,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
       setError("");
       const partnerId = nextCouple.memberIds.find((id) => id !== user.uid);
       unsubscribePartner();
+      if (!partnerId) setPartner(null);
       if (partnerId) {
         unsubscribePartner = onSnapshot(doc(database, "users", partnerId), (partnerSnapshot) => {
           setPartner(partnerSnapshot.exists() ? partnerSnapshot.data() as UserDocument : null);
@@ -131,7 +130,7 @@ export function CoupleProvider({ children }: { children: ReactNode }) {
       unsubscribeCouple();
       unsubscribePartner();
     };
-  }, [profile, user]);
+  }, [profileCoupleId, user]);
 
   const value = useMemo(() => ({ profile, partner, couple, loading, error }), [profile, partner, couple, loading, error]);
   return <CoupleContext.Provider value={value}>{children}</CoupleContext.Provider>;

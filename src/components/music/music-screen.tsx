@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 /* eslint-disable @next/next/no-img-element */
 
 import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "@/lib/database";
-import { Disc3, Download, Headphones, Heart, LoaderCircle, Music2, Pause, Play, RefreshCw, Search, X } from "lucide-react";
+import { Disc3, Download, Headphones, Heart, Link2, LoaderCircle, Music2, Pause, Play, RefreshCw, Search, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { LoginScreen } from "@/components/auth/login-screen";
@@ -38,6 +38,10 @@ function trackKey(track: Track) {
 function trackDownloadUrl(track: Track) {
   const params = new URLSearchParams({ source: track.source, url: track.url, title: track.title });
   return `/api/music/download?${params}`;
+}
+
+function isSoundCloudUrl(q: string) {
+  try { const u = new URL(q); return u.hostname.includes("soundcloud.com"); } catch { return false; }
 }
 
 export function MusicScreen() {
@@ -107,6 +111,7 @@ export function MusicScreen() {
 
   const displayedTracks = showFavorites ? favorites : tracks;
   const favoriteIds = useMemo(() => new Set(favorites.map(trackKey)), [favorites]);
+  const isLinkSearch = isSoundCloudUrl(searchTerm);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -166,8 +171,29 @@ export function MusicScreen() {
         <header><p className="font-handwritten text-xl text-[#a56f78]">Giai điệu của hai mình</p><h1 className="flex items-center gap-2 font-display text-3xl font-extrabold"><Headphones className="size-7 text-[#d17485]" />Nghe nhạc</h1><p className="mt-1 text-sm text-[#8b756a]">Tìm, nghe và lưu bài hát cả hai cùng thích</p></header>
 
         <form className="mt-6 flex gap-2" onSubmit={submitSearch}>
-          <label className="relative min-w-0 flex-1"><Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#ad958a]" /><input className="soft-input pl-11 pr-10" value={queryInput} onChange={(event) => setQueryInput(event.target.value)} placeholder="Tìm bài hát, ca sĩ..." aria-label="Tìm bài hát" />{queryInput && <button className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full hover:bg-blush/20" type="button" onClick={clearSearch} aria-label="Xóa tìm kiếm"><X className="size-4" /></button>}</label>
-          <button className="primary-button shrink-0 px-4" type="submit"><Search className="size-5" /><span className="hidden sm:inline">Tìm</span></button>
+          <label className="relative min-w-0 flex-1">
+            {isSoundCloudUrl(queryInput) ? (
+              <Link2 className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#f59a6c]" />
+            ) : (
+              <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#ad958a]" />
+            )}
+            <input
+              className="soft-input pl-11 pr-10"
+              value={queryInput}
+              onChange={(event) => setQueryInput(event.target.value)}
+              placeholder="Tên bài hát, ca sĩ hoặc link SoundCloud..."
+              aria-label="Tìm bài hát"
+            />
+            {queryInput && (
+              <button className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full hover:bg-blush/20" type="button" onClick={clearSearch} aria-label="Xóa tìm kiếm">
+                <X className="size-4" />
+              </button>
+            )}
+          </label>
+          <button className="primary-button shrink-0 px-4" type="submit">
+            <Search className="size-5" />
+            <span className="hidden sm:inline">{isSoundCloudUrl(queryInput) ? "Mở link" : "Tìm"}</span>
+          </button>
         </form>
 
         <div className="soft-card mt-4 grid grid-cols-2 gap-1 p-1.5">
@@ -176,17 +202,62 @@ export function MusicScreen() {
         </div>
         <Link href="/music-history" className="secondary-button mt-3 w-full"><Headphones className="size-4" />Xem nhật ký nghe nhạc của hai bạn</Link>
 
-        <div className="mt-7 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#aa7a83]">{showFavorites ? "Playlist chung realtime" : searchTerm ? "Kết quả tìm kiếm" : "Dành cho hai bạn"}</p><h2 className="font-display text-2xl font-extrabold">{showFavorites ? "Bài hai mình yêu thích" : searchTerm ? `“${searchTerm}”` : "Đang thịnh hành"}</h2></div>{!visibleLoading && <span className="rounded-full bg-blush/25 px-3 py-1 text-xs font-bold">{displayedTracks.length} bài</span>}</div>
+        <div className="mt-7 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#aa7a83]">
+              {showFavorites ? "Playlist chung realtime" : searchTerm ? (isLinkSearch ? "Tìm theo link" : "Kết quả tìm kiếm") : "Dành cho hai bạn"}
+            </p>
+            <h2 className="font-display text-2xl font-extrabold">
+              {showFavorites ? "Bài hai mình yêu thích" : searchTerm ? (isLinkSearch ? "Từ link SoundCloud" : `"${searchTerm}"`) : "Đang thịnh hành"}
+            </h2>
+          </div>
+          {!visibleLoading && <span className="rounded-full bg-blush/25 px-3 py-1 text-xs font-bold">{displayedTracks.length} bài</span>}
+        </div>
+
         {favoriteError && !showFavorites && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{favoriteError}</p>}
         {playbackError && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{playbackError}</p>}
 
-        {visibleLoading ? <div className="py-24 text-center"><LoaderCircle className="mx-auto size-9 animate-spin text-[#d17485]" /><p className="mt-3 text-sm text-[#8b756a]">Đang tìm những giai điệu hay...</p></div> : visibleError ? <div className="soft-card mt-5 p-7 text-center"><p className="text-sm text-red-700">{visibleError}</p>{!showFavorites && <button className="secondary-button mt-4" type="button" onClick={() => setReloadKey((value) => value + 1)}><RefreshCw className="size-4" />Thử lại</button>}</div> : displayedTracks.length === 0 ? <div className="soft-card mt-5 p-10 text-center">{showFavorites ? <Heart className="mx-auto size-11 text-[#d18a96]" /> : <Music2 className="mx-auto size-11 text-[#d18a96]" />}<p className="mt-3 font-bold">{showFavorites ? "Hai bạn chưa có bài hát yêu thích." : "Không tìm thấy bài hát phù hợp."}</p>{showFavorites && <p className="mt-2 text-sm text-[#8b756a]">Mở SoundCloud rồi bấm trái tim cạnh bài hát nhé.</p>}</div> : <section className="mt-4 space-y-2">{displayedTracks.map((track) => {
-          const key = trackKey(track);
-          const active = selected ? trackKey(selected) === key : false;
-          const favorite = favoriteIds.has(key);
-          const busy = favoriteBusy === key.replaceAll("/", "_");
-          return <article className={`flex items-center gap-1 rounded-[1.35rem] border p-2.5 transition ${active ? "border-blush bg-blush/25 shadow-soft" : "border-white/70 bg-white/45 hover:bg-white/70"}`} key={key}><button className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]" type="button" onClick={() => selectTrack(track)}><span className="relative size-16 shrink-0 overflow-hidden rounded-2xl bg-[#eadbd0]">{track.thumbnail ? <img className="size-full object-cover" src={track.thumbnail} alt="" /> : <span className="grid size-full place-items-center"><Disc3 className="size-7 text-[#c77a88]" /></span>}<span className="absolute bottom-1 right-1 grid size-7 place-items-center rounded-full bg-white/90 shadow-sm">{active && playing ? <Pause className="size-3.5 fill-[#c66f80] text-[#c66f80]" /> : <Play className="ml-0.5 size-3.5 fill-[#c66f80] text-[#c66f80]" />}</span></span><span className="min-w-0 flex-1"><span className="line-clamp-2 text-sm font-bold leading-5">{track.title}</span><span className="mt-1 block truncate text-xs text-[#8b756a]">{track.artist} · {track.duration}</span>{showFavorites && <span className="mt-0.5 block truncate text-[10px] text-[#aa7a83]">Được thích bởi {(track as FavoriteTrack).addedByName}</span>}</span></button><a className="grid size-10 shrink-0 place-items-center rounded-full text-[#947f76] transition hover:bg-white active:scale-90" href={trackDownloadUrl(track)} download aria-label={`Tải xuống ${track.title}`} title="Tải MP3"><Download className="size-4" /></a><button className={`grid size-10 shrink-0 place-items-center rounded-full transition active:scale-90 ${favorite ? "bg-blush/35 text-[#d15f75]" : "text-[#a9958c] hover:bg-white"}`} type="button" disabled={busy} onClick={() => toggleFavorite(track)} aria-label={favorite ? "Bỏ khỏi yêu thích" : "Thêm vào yêu thích"}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Heart className={`size-5 ${favorite ? "fill-current" : ""}`} />}</button></article>;
-        })}</section>}
+        {visibleLoading ? (
+          <div className="py-24 text-center"><LoaderCircle className="mx-auto size-9 animate-spin text-[#d17485]" /><p className="mt-3 text-sm text-[#8b756a]">Đang tìm những giai điệu hay...</p></div>
+        ) : visibleError ? (
+          <div className="soft-card mt-5 p-7 text-center"><p className="text-sm text-red-700">{visibleError}</p>{!showFavorites && <button className="secondary-button mt-4" type="button" onClick={() => setReloadKey((value) => value + 1)}><RefreshCw className="size-4" />Thử lại</button>}</div>
+        ) : displayedTracks.length === 0 ? (
+          <div className="soft-card mt-5 p-10 text-center">
+            {showFavorites ? <Heart className="mx-auto size-11 text-[#d18a96]" /> : <Music2 className="mx-auto size-11 text-[#d18a96]" />}
+            <p className="mt-3 font-bold">{showFavorites ? "Hai bạn chưa có bài hát yêu thích." : "Không tìm thấy bài hát phù hợp."}</p>
+            {showFavorites && <p className="mt-2 text-sm text-[#8b756a]">Mở SoundCloud rồi bấm trái tim cạnh bài hát nhé.</p>}
+          </div>
+        ) : (
+          <section className="mt-4 space-y-2">
+            {displayedTracks.map((track) => {
+              const key = trackKey(track);
+              const active = selected ? trackKey(selected) === key : false;
+              const favorite = favoriteIds.has(key);
+              const busy = favoriteBusy === key.replaceAll("/", "_");
+              return (
+                <article className={`flex items-center gap-1 rounded-[1.35rem] border p-2.5 transition ${active ? "border-blush bg-blush/25 shadow-soft" : "border-white/70 bg-white/45 hover:bg-white/70"}`} key={key}>
+                  <button className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]" type="button" onClick={() => selectTrack(track)}>
+                    <span className="relative size-16 shrink-0 overflow-hidden rounded-2xl bg-[#eadbd0]">
+                      {track.thumbnail ? <img className="size-full object-cover" src={track.thumbnail} alt="" /> : <span className="grid size-full place-items-center"><Disc3 className="size-7 text-[#c77a88]" /></span>}
+                      <span className="absolute bottom-1 right-1 grid size-7 place-items-center rounded-full bg-white/90 shadow-sm">
+                        {active && playing ? <Pause className="size-3.5 fill-[#c66f80] text-[#c66f80]" /> : <Play className="ml-0.5 size-3.5 fill-[#c66f80] text-[#c66f80]" />}
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 text-sm font-bold leading-5">{track.title}</span>
+                      <span className="mt-1 block truncate text-xs text-[#8b756a]">{track.artist} · {track.duration}</span>
+                      {showFavorites && <span className="mt-0.5 block truncate text-[10px] text-[#aa7a83]">Được thích bởi {(track as FavoriteTrack).addedByName}</span>}
+                    </span>
+                  </button>
+                  <a className="grid size-10 shrink-0 place-items-center rounded-full text-[#947f76] transition hover:bg-white active:scale-90" href={trackDownloadUrl(track)} download aria-label={`Tải xuống ${track.title}`} title="Tải MP3"><Download className="size-4" /></a>
+                  <button className={`grid size-10 shrink-0 place-items-center rounded-full transition active:scale-90 ${favorite ? "bg-blush/35 text-[#d15f75]" : "text-[#a9958c] hover:bg-white"}`} type="button" disabled={busy} onClick={() => toggleFavorite(track)} aria-label={favorite ? "Bỏ khỏi yêu thích" : "Thêm vào yêu thích"}>
+                    {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Heart className={`size-5 ${favorite ? "fill-current" : ""}`} />}
+                  </button>
+                </article>
+              );
+            })}
+          </section>
+        )}
       </div>
 
       <BottomNav />

@@ -119,3 +119,16 @@ export async function resolveSoundCloudAudio(input: string) {
     mimeType: selected.format?.mime_type || "audio/mpeg",
   };
 }
+
+/** Resolve a SoundCloud URL or numeric ID and return track metadata (without resolving audio stream). */
+export async function resolveSoundCloudTrackInfo(input: string) {
+  const track = await resolveTrack(input);
+  return {
+    id: String(track.id),
+    title: track.title || "SoundCloud Track",
+    artist: track.user?.username || "SoundCloud",
+    duration: formatDuration(track.duration),
+    thumbnail: track.artwork_url || track.user?.avatar_url || "",
+    url: track.permalink_url || input,
+  };
+}

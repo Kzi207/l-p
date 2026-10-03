@@ -1,6 +1,7 @@
 import type { Timestamp } from "@/lib/database";
 
 export interface CoupleInfo {
+  mode?: "personal" | "shared";
   memberIds: string[];
   startDate: Timestamp | null;
   createdAt: Timestamp;

@@ -5,17 +5,17 @@ import { ApiAuthError, verifyAuthToken } from "@/lib/verifyAuthToken";
 
 interface PartnerNotificationOptions {
   request: Request;
-  collectionName: "photos" | "locketPosts" | "mediaMemories" | "locketMessages" | "coupleEvents" | "timeCapsules";
+  collectionName: "photos" | "locketPosts" | "mediaMemories" | "locketMessages" | "coupleEvents";
   itemId: unknown;
   senderUid: unknown;
   senderField: "uploaderId" | "senderId" | "authorId" | "creatorId";
-  type: "photo" | "locket" | "memory" | "message" | "calendar" | "timecapsule";
-  route: "/" | "/locket" | "/map" | "/chat" | "/calendar" | "/timecapsule";
+  type: "photo" | "locket" | "memory" | "message" | "calendar";
+  route: "/" | "/locket" | "/map" | "/chat" | "/calendar";
   content: (data: Record<string, unknown>) => { title: string; body: string };
 }
 
 function deepLink(route: string, type: PartnerNotificationOptions["type"], itemId: string) {
-  const parameter = type === "message" ? "message" : type === "locket" ? "post" : type === "memory" ? "memory" : type === "calendar" ? "event" : type === "timecapsule" ? "capsule" : "photo";
+  const parameter = type === "message" ? "message" : type === "locket" ? "post" : type === "memory" ? "memory" : type === "calendar" ? "event" : "photo";
   const separator = route.includes("?") ? "&" : "?";
   return `${route}${separator}${parameter}=${encodeURIComponent(itemId)}`;
 }

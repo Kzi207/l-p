@@ -11,14 +11,6 @@ export function AppLoading({ onContinue }: { onContinue?: () => void }) {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // Một số PWA/WebView tạm ngưng callback khôi phục Firebase khi ứng dụng vừa
-  // thức dậy. Màn hình khởi động không được phép khóa người dùng vô thời hạn.
-  useEffect(() => {
-    if (!onContinue) return;
-    const timer = window.setTimeout(onContinue, 6_000);
-    return () => window.clearTimeout(timer);
-  }, [onContinue]);
-
   return (
     <main className="grid min-h-dvh place-items-center px-5" aria-label="Đang tải Love Days">
       <div className="text-center">
@@ -26,7 +18,7 @@ export function AppLoading({ onContinue }: { onContinue?: () => void }) {
         <p className="mt-4 font-handwritten text-2xl text-[#a56f78]">Đang mở Love Days...</p>
         <p className="mt-1 text-xs text-[#9b887e]">Đang khôi phục phiên đăng nhập và không gian của hai bạn.</p>
         {slow && onContinue && <button type="button" onClick={onContinue} className="secondary-button mx-auto mt-5 !min-h-11">
-          <RefreshCw className="size-4" /> Tiếp tục vào ứng dụng
+          <RefreshCw className="size-4" /> Thử kết nối lại
         </button>}
       </div>
     </main>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth } from "@/lib/firebaseAdmin";
+import { getIdTokenVerifier } from "@/lib/firebaseAdmin";
 import { executeDatabaseAction, type DatabaseUser, type JsonRecord } from "@/lib/neon-database";
 
 export const dynamic = "force-dynamic";
@@ -8,25 +8,8 @@ export const runtime = "nodejs";
 async function authenticate(token: unknown): Promise<DatabaseUser> {
   if (typeof token !== "string" || !token) throw new Error("Bạn cần đăng nhập lại.");
   try {
-    if (process.env.FIREBASE_ADMIN_SA_BASE64?.trim()) {
-      // Chữ ký và hạn token vẫn được kiểm tra; không gọi thêm API kiểm tra revoke
-      // ở mọi lần poll dữ liệu vì việc đó làm màn hình khởi động chậm đáng kể.
-      const decoded = await getAdminAuth().verifyIdToken(token);
-      return { uid: decoded.uid };
-    }
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
-    if (!apiKey) throw new Error("Thiếu Firebase API key.");
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: token }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
-    });
-    const payload = await response.json() as { users?: Array<{ localId?: string }> };
-    const uid = payload.users?.[0]?.localId;
-    if (!response.ok || !uid) throw new Error("Token không hợp lệ.");
-    return { uid };
+    const decoded = await getIdTokenVerifier().verifyIdToken(token);
+    return { uid: decoded.uid };
   } catch {
     throw new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
   }

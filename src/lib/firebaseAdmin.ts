@@ -32,7 +32,7 @@ function decodeServiceAccount() {
 
 /** Khởi tạo Admin SDK đúng một lần trong tiến trình Next.js chạy trên Render. */
 export function getFirebaseAdminApp(): App {
-  const existing = getApps()[0];
+  const existing = getApps().find((entry) => entry.name === "[DEFAULT]");
   if (existing) return existing;
 
   return initializeApp({
@@ -43,6 +43,17 @@ export function getFirebaseAdminApp(): App {
 
 export function getAdminAuth() {
   return getAuth(getFirebaseAdminApp());
+}
+
+// ID-token verification only needs the project ID and Google's public keys.
+// The Admin SDK caches those keys; no account lookup is needed per data request.
+export function getIdTokenVerifier() {
+  if (process.env.FIREBASE_ADMIN_SA_BASE64?.trim()) return getAdminAuth();
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
+  if (!projectId) throw new Error("Thiếu Firebase project ID.");
+  const name = "love-days-token-verifier";
+  const app = getApps().find((entry) => entry.name === name) ?? initializeApp({ projectId }, name);
+  return getAuth(app);
 }
 
 export function getAdminMessaging() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, Heart, MapPinned, Sparkles } from "lucide-react";
+import { Heart, MapPinned, Sparkles } from "lucide-react";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -20,12 +20,7 @@ const content = {
     description: "Các địa điểm hai bạn từng ghé qua sẽ xuất hiện tại đây cùng ảnh và câu chuyện tương ứng.",
     icon: MapPinned,
   },
-  timecapsule: {
-    eyebrow: "Gửi một lời nhắn đến mai sau",
-    title: "Hộp thư tương lai",
-    description: "Viết những lá thư chỉ được mở vào đúng ngày hai bạn đã hẹn với nhau.",
-    icon: Clock3,
-  },
+
 } as const;
 
 export function FeaturePage({ type }: { type: keyof typeof content }) {

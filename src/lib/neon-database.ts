@@ -1,6 +1,7 @@
 import "server-only";
 
 import { neon } from "@neondatabase/serverless";
+import { planWorkspace } from "@/lib/workspace-plan";
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -129,17 +130,8 @@ function validateCollectionPath(value: unknown) {
   return path;
 }
 
-function visibleData(path: string, data: JsonRecord, user: DatabaseUser) {
-  if (user.admin || !path.includes("/timeCapsules/")) return data;
-  const openDate = data.openDate;
-  const openAt = openDate && typeof openDate === "object" && "value" in openDate ? Number((openDate as JsonRecord).value) : 0;
-  if (!openAt || openAt <= Date.now()) return data;
-  const hidden = structuredClone(data);
-  delete hidden.message;
-  delete hidden.mediaUrl;
-  delete hidden.cloudinaryPublicId;
-  hidden.locked = true;
-  return hidden;
+function visibleData(_path: string, data: JsonRecord, _user: DatabaseUser) {
+  return data;
 }
 
 function hasLinkedCouple(index: Map<string, StoredRecord>, firstUid: string, secondUid: string) {
@@ -178,6 +170,7 @@ function authorize(user: DatabaseUser, path: string, action: string, currentData
 
   if (parts[0] === "pairInvites") {
     const invite = currentData || incoming;
+    if (action === "read" && currentData?.status === "active" && (!currentData.targetUid || currentData.targetUid === user.uid)) return;
     if (invite.ownerId === user.uid || invite.targetUid === user.uid || invite.acceptedBy === user.uid) return;
     throw new Error("Bạn không có quyền với lời mời này.");
   }
@@ -292,13 +285,35 @@ async function commit(operationsValue: unknown, user: DatabaseUser, records: Sto
         [path, JSON.stringify(record.data), record.createdAt, record.updatedAt],
       )
     : sql.query("DELETE FROM love_days_records WHERE path = $1", [path]));
-  if (queries.length) await sql.transaction(queries);
+  if (queries.length) {
+    const scopes = Array.from(new Set([`users/${user.uid}`, ...operations.map(operation => operation.path.split("/").slice(0, 2).join("/"))]));
+    await sql.transaction([sql.query("LOCK TABLE love_days_records IN SHARE ROW EXCLUSIVE MODE"), snapshotGuard(sql, records, scopes), ...queries]);
+  }
   return { written: operations.length };
+}
+
+function snapshotGuard(sql: ReturnType<typeof sqlClient>, records: StoredRecord[], scopes: string[]) {
+  const expected = Object.fromEntries(records.filter(record => scopes.includes(record.path.split("/").slice(0, 2).join("/"))).map(record => [record.path, record.data]));
+  return sql.query(`SELECT CASE WHEN COALESCE((SELECT jsonb_object_agg(path, data) FROM love_days_records
+    WHERE split_part(path, '/', 1) || '/' || split_part(path, '/', 2) = ANY($1::text[])), '{}'::jsonb) = $2::jsonb
+    THEN 1 ELSE CAST($3 AS integer) END`, [scopes, JSON.stringify(expected), "Dữ liệu vừa thay đổi. Hãy thử lại."]);
+}
+
+async function updateWorkspace(action: string, body: JsonRecord, user: DatabaseUser, records: StoredRecord[]) {
+  const plan = planWorkspace(action, body, user.uid, records);
+  if (!plan.changes.size) return plan.result;
+  const sql = sqlClient();
+  const writes = Array.from(plan.changes, ([path, record]) => record
+    ? sql.query("INSERT INTO love_days_records (path, data, created_at, updated_at) VALUES ($1, $2::jsonb, $3, $4) ON CONFLICT (path) DO UPDATE SET data = EXCLUDED.data, updated_at = EXCLUDED.updated_at", [path, JSON.stringify(record.data), record.createdAt, record.updatedAt])
+    : sql.query("DELETE FROM love_days_records WHERE path = $1", [path]));
+  await sql.transaction([sql.query("LOCK TABLE love_days_records IN SHARE ROW EXCLUSIVE MODE"), snapshotGuard(sql, records, plan.scopes), ...writes]);
+  return plan.result;
 }
 
 export async function executeDatabaseAction(body: JsonRecord, user: DatabaseUser) {
   const action = String(body.action || "");
   const records = await loadRecords();
+  if (action === "ensureWorkspace" || action === "acceptPairInvite") return updateWorkspace(action, body, user, records);
   if (action === "get") return readOne(body.path, user, records);
   if (action === "list") return readList(body.path, body.constraints, user, records);
   if (action === "write") return commit([body.operation], user, records);

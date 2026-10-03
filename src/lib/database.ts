@@ -82,6 +82,44 @@ const inflightReads = new Map<string, Promise<unknown>>();
 // Reuse the last successful value when a listener is recreated after an auth
 // transition. A network refresh still starts immediately in the background.
 const snapshotCache = new Map<string, SnapshotView<DocumentData>>();
+const HOME_CACHE_PREFIX = "love-days:home:v1:";
+const HOME_CACHE_TTL = 30 * 60 * 1000;
+
+export function clearDatabaseCache() {
+  snapshotCache.clear();
+  inflightReads.clear();
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith(HOME_CACHE_PREFIX)) sessionStorage.removeItem(key);
+    }
+  } catch { /* Storage may be disabled in private browsing. */ }
+}
+
+function cacheableHomeReference(reference: Reference) {
+  return /^(users|couples)\/[^/]+$/.test(reference.path)
+    || (/^couples\/[^/]+\/photos$/.test(reference.path) && reference.constraints?.some((item) => item.kind === "limit" && item.count === 1));
+}
+
+function readHomeCache<T>(key: string, reference: Reference): SnapshotView<T> | undefined {
+  if (!auth?.currentUser || !cacheableHomeReference(reference)) return;
+  try {
+    const raw = sessionStorage.getItem(HOME_CACHE_PREFIX + key);
+    if (!raw) return;
+    const entry = JSON.parse(raw);
+    if (typeof entry.savedAt !== "number" || Date.now() - entry.savedAt > HOME_CACHE_TTL) return;
+    if (entry.documents) return new QuerySnapshot<T>(entry.documents.map((item: { id: string; data: unknown }) => new DocumentSnapshot(item.id, hydrate(item.data) as T)));
+    return new DocumentSnapshot<T>(reference.id, hydrate(entry.data) as T | null);
+  } catch { return; }
+}
+
+function saveHomeCache(key: string, reference: Reference, snapshot: SnapshotView<DocumentData>) {
+  if (!cacheableHomeReference(reference)) return;
+  try {
+    const value = snapshot instanceof DocumentSnapshot ? { data: serialize(snapshot.data()) }
+      : { documents: snapshot.docs.map((item) => ({ id: item.id, data: serialize(item.data()) })) };
+    sessionStorage.setItem(HOME_CACHE_PREFIX + key, JSON.stringify({ savedAt: Date.now(), ...value }));
+  } catch { /* A full cache must never block live data. */ }
+}
 const LOCAL_WRITE_EVENT = "love-days:database-write";
 
 function notifyLocalWrites(paths: string[]) {
@@ -175,7 +213,7 @@ async function requestDirect<T>(action: string, payload: JsonRecord = {}): Promi
 
 async function request<T>(action: string, payload: JsonRecord = {}): Promise<T> {
   if (action !== "get" && action !== "list" && action !== "exportCouple") return requestDirect<T>(action, payload);
-  const key = `${action}:${JSON.stringify(serialize(payload))}`;
+  const key = `${auth?.currentUser?.uid || "anonymous"}:${action}:${JSON.stringify(serialize(payload))}`;
   const existing = inflightReads.get(key);
   if (existing) return existing as Promise<T>;
   const pending = requestDirect<T>(action, payload);
@@ -185,6 +223,19 @@ async function request<T>(action: string, payload: JsonRecord = {}): Promise<T> 
 
 export function collection(first: unknown, ...segments: string[]) {
   return makeReference(referencePath(first, segments));
+}
+
+export async function ensureWorkspace(profile: { displayName: string; email: string; photoURL: string }) {
+  const result = await request<{ coupleId: string }>("ensureWorkspace", profile);
+  notifyLocalWrites([`users/${auth?.currentUser?.uid}`, `couples/${result.coupleId}`]);
+  return result;
+}
+
+export async function acceptPairInvite(inviteId: string) {
+  const result = await request<{ coupleId: string }>("acceptPairInvite", { inviteId });
+  clearDatabaseCache();
+  notifyLocalWrites([`users/${auth?.currentUser?.uid}`, `pairInvites/${inviteId}`, `couples/${result.coupleId}`]);
+  return result;
 }
 
 export function doc(first: unknown, ...segments: string[]) {
@@ -266,8 +317,9 @@ export function onSnapshot<T = DocumentData>(
   let retryTimer: number | undefined;
   let retryDelay = 1_500;
   const isDocument = reference.path.split("/").length % 2 === 0;
-  const cacheKey = `${auth?.currentUser?.uid || "anonymous"}:${reference.path}:${JSON.stringify(reference.constraints || [])}`;
-  const cached = snapshotCache.get(cacheKey) as SnapshotView<T> | undefined;
+  const ownerUid = auth?.currentUser?.uid;
+  const cacheKey = `${ownerUid || "anonymous"}:${reference.path}:${JSON.stringify(reference.constraints || [])}`;
+  const cached = (snapshotCache.get(cacheKey) as SnapshotView<T> | undefined) ?? readHomeCache<T>(cacheKey, reference);
 
   if (cached) {
     lastPayload = JSON.stringify(cached instanceof DocumentSnapshot ? cached.data() : cached.docs.map((item) => [item.id, item.data()]));
@@ -275,7 +327,7 @@ export function onSnapshot<T = DocumentData>(
   }
 
   const refresh = async () => {
-    if (!active) return;
+    if (!active || auth?.currentUser?.uid !== ownerUid) return;
     if (running) {
       refreshQueued = true;
       return;
@@ -285,8 +337,9 @@ export function onSnapshot<T = DocumentData>(
       const snapshot = isDocument ? await getDoc<T>(reference) : await getDocs<T>(reference);
       // A request can finish after the owning React effect was cleaned up. Do not
       // allow that stale response to overwrite a newer sign-in session.
-      if (!active) return;
+      if (!active || auth?.currentUser?.uid !== ownerUid) return;
       snapshotCache.set(cacheKey, snapshot as SnapshotView<DocumentData>);
+      saveHomeCache(cacheKey, reference, snapshot as SnapshotView<DocumentData>);
       retryDelay = 1_500;
       const payload = JSON.stringify(snapshot instanceof DocumentSnapshot ? snapshot.data() : snapshot.docs.map((item) => [item.id, item.data()]));
       if (payload !== lastPayload) {
