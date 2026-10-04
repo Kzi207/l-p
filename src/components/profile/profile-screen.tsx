@@ -21,6 +21,7 @@ export function ProfileScreen() {
   const { user } = useAuth();
   const { profile, partner, couple, loading, error: profileError } = useCoupleSpace();
   const [displayName, setDisplayName] = useState("");
+  const [publicUid, setPublicUid] = useState("");
   const [nickname, setNickname] = useState("");
   const [birthday, setBirthday] = useState("");
   const [bio, setBio] = useState("");
@@ -37,6 +38,7 @@ export function ProfileScreen() {
   useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.displayName || "");
+    setPublicUid(profile.publicUid || "");
     setNickname(profile.nickname || "");
     setBirthday(profile.birthday || "");
     setBio(profile.bio || "");
@@ -64,7 +66,7 @@ export function ProfileScreen() {
     try {
       await updateDoc(doc(db, "users", userId), {
         displayName: displayName.trim(),
-        nickname: nickname.trim(),
+        nickname: nickname.trim(), publicUid: publicUid.trim().toLowerCase(),
         birthday,
         bio: bio.trim(),
         photoURL: photoURL.trim(),
@@ -111,7 +113,8 @@ export function ProfileScreen() {
   }
 
   async function copyUid() {
-    await navigator.clipboard.writeText(userId);
+    if (!profile?.publicUid) return;
+    await navigator.clipboard.writeText(profile.publicUid);
     setMessage("Đã sao chép UID.");
   }
 
@@ -176,6 +179,8 @@ export function ProfileScreen() {
           <div><p className="font-handwritten text-xl text-[#a56f78]">Góc riêng của bạn</p><h1 className="font-display text-3xl font-extrabold">Cá nhân</h1></div>
         </header>
 
+        {couple.memberIds.length === 1 && <Link href="/pairing" className="primary-button mt-6 w-full">Ghép đôi</Link>}
+
         {partner && <section className="soft-card mt-6 p-4">
           <div className="flex items-center gap-4">
             <span className="size-14 shrink-0 overflow-hidden rounded-full bg-blush/30"><AvatarImage src={partner.photoURL} alt="Ảnh người thương" /></span>
@@ -196,6 +201,7 @@ export function ProfileScreen() {
           </div>
 
           <div className="mt-5 space-y-3">
+            <label className="block text-sm font-semibold">UID của bạn<input className="soft-input mt-1.5" required minLength={3} maxLength={24} pattern="[A-Za-z0-9_]{3,24}" autoCapitalize="none" spellCheck={false} placeholder="Ví dụ: kzi207" value={publicUid} onChange={(event) => setPublicUid(event.target.value)} /><span className="mt-1 block text-xs font-normal text-[#8b756a]">Tự đặt 3–24 chữ cái không dấu, số hoặc dấu gạch dưới để người thương tìm bạn.</span></label>
             <label className="block text-sm font-semibold">Tên hiển thị<input className="soft-input mt-1.5" required maxLength={40} value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
             <label className="block text-sm font-semibold">Tên gọi thân mật<input className="soft-input mt-1.5" maxLength={30} value={nickname} onChange={(event) => setNickname(event.target.value)} /></label>
             <label className="block text-sm font-semibold">Ngày sinh<input className="soft-input mt-1.5" type="date" value={birthday} onChange={(event) => setBirthday(event.target.value)} /></label>
@@ -209,7 +215,7 @@ export function ProfileScreen() {
 
         <section className="soft-card mt-5 p-5">
           <p className="text-xs font-bold uppercase tracking-wider text-[#9b7780]">UID của bạn</p>
-          <div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 break-all text-xs">{userId}</code><button className="grid size-10 shrink-0 place-items-center rounded-xl bg-blush/35" type="button" onClick={copyUid} aria-label="Sao chép UID"><Copy className="size-4" /></button></div>
+          <div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 break-all text-xs">{profile?.publicUid || "Chưa đặt UID"}</code><button className="grid size-10 shrink-0 place-items-center rounded-xl bg-blush/35" type="button" onClick={copyUid} disabled={!profile?.publicUid} aria-label="Sao chép UID"><Copy className="size-4" /></button></div>
           <button className="secondary-button mt-4 w-full" type="button" disabled={notificationStatus === "loading" || notificationStatus === "granted"} onClick={enableNotifications}><Bell className="size-4" />{notificationStatus === "granted" ? "Đã bật thông báo" : notificationStatus === "loading" ? "Đang bật..." : "Bật thông báo ảnh và tin nhắn"}</button>
           {(notificationStatus === "denied" || notificationStatus === "unsupported") && <p className="mt-2 text-xs text-red-700">Trình duyệt chưa cho phép hoặc không hỗ trợ thông báo.</p>}
           {notificationError && <p className="mt-2 text-xs text-red-700">{notificationError}</p>}

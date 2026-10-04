@@ -66,6 +66,7 @@ export function ensureNeonSchema() {
         )
       `);
       await sql.query("CREATE INDEX IF NOT EXISTS love_days_records_updated_at_idx ON love_days_records (updated_at DESC)");
+      await sql.query("CREATE UNIQUE INDEX IF NOT EXISTS love_days_public_uid_idx ON love_days_records ((data->>'publicUid')) WHERE path ~ '^users/[^/]+$' AND data->>'publicUid' <> ''");
     })().catch((error) => {
       schemaPromise = null;
       throw error;
@@ -273,6 +274,10 @@ async function commit(operationsValue: unknown, user: DatabaseUser, records: Sto
     const now = Date.now();
     const incoming = resolveOperations(operation.data || {}, now) as JsonRecord;
     const data = operation.type === "update" || operation.merge ? mergeFields(existing?.data || {}, incoming) : incoming;
+    if (/^users\/[^/]+$/.test(path) && data.publicUid !== undefined) {
+      if (typeof data.publicUid !== "string" || !/^[a-z0-9_]{3,24}$/.test(data.publicUid)) throw new Error("UID cần có 3–24 chữ cái không dấu, số hoặc dấu gạch dưới.");
+      if (Array.from(index.values()).some(record => record.path !== path && /^users\/[^/]+$/.test(record.path) && record.data.publicUid === data.publicUid)) throw new Error("UID này đã có người sử dụng. Hãy chọn UID khác.");
+    }
     const next = { path, data, createdAt: existing?.createdAt || now, updatedAt: now };
     index.set(path, next);
     changes.set(path, next);
@@ -295,6 +300,9 @@ async function commit(operationsValue: unknown, user: DatabaseUser, records: Sto
 const SNAPSHOT_CONFLICT = "love_days_snapshot_conflict";
 
 function handleSnapshotError(error: unknown): never {
+  if (error instanceof Error && "code" in error && error.code === "23505" && error.message.includes("love_days_public_uid_idx")) {
+    throw new Error("UID này đã có người sử dụng. Hãy chọn UID khác.");
+  }
   if (error instanceof Error && "code" in error && error.code === "22P02" && error.message.includes(`"${SNAPSHOT_CONFLICT}"`)) {
     throw new Error("Dữ liệu vừa thay đổi. Hãy thử lại.");
   }
@@ -324,6 +332,20 @@ async function updateWorkspace(action: string, body: JsonRecord, user: DatabaseU
 export async function executeDatabaseAction(body: JsonRecord, user: DatabaseUser) {
   const action = String(body.action || "");
   const records = await loadRecords();
+  if (action === "findUserByPublicUid") {
+    const publicUid = typeof body.publicUid === "string" ? body.publicUid.trim().toLowerCase() : "";
+    if (!/^[a-z0-9_]{3,24}$/.test(publicUid)) throw new Error("UID cần có 3–24 chữ cái không dấu, số hoặc dấu gạch dưới.");
+    const target = records.find(record => /^users\/[^/]+$/.test(record.path) && record.data.publicUid === publicUid);
+    if (!target) throw new Error("Không tìm thấy người dùng có UID này.");
+    const uid = target.path.slice(6);
+    if (uid === user.uid) throw new Error("Bạn không thể tự ghép đôi với chính mình.");
+    for (const profile of [target, records.find(record => record.path === `users/${user.uid}`)]) {
+      if (!profile) throw new Error("Hãy lưu hồ sơ trước khi ghép đôi.");
+      const space = records.find(record => record.path === `couples/${profile.data.coupleId}`);
+      if (space && Array.isArray(space.data.memberIds) && space.data.memberIds.length > 1 && !space.data.endedAt) throw new Error("Một trong hai tài khoản đã ghép đôi.");
+    }
+    return { uid, publicUid };
+  }
   if (action === "ensureWorkspace" || action === "acceptPairInvite") return updateWorkspace(action, body, user, records);
   if (action === "get") return readOne(body.path, user, records);
   if (action === "list") return readList(body.path, body.constraints, user, records);

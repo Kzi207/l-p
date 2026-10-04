@@ -20,6 +20,7 @@ export interface PhotoDocument {
 }
 
 export interface UserDocument {
+  publicUid?: string;
   displayName: string;
   email: string;
   nickname?: string;
@@ -34,6 +35,7 @@ export interface PairInviteDocument {
   ownerId: string;
   ownerName: string;
   targetUid: string;
+  targetPublicUid?: string;
   status: "active" | "accepted";
   acceptedBy?: string;
   coupleId?: string;

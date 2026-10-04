@@ -1,6 +1,8 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import Link from "next/link";
+import { useCoupleSpace } from "@/components/providers/couple-provider";
 import { AnimatePresence, motion } from "framer-motion";
 import { signOut, type User } from "firebase/auth";
 import { doc, updateDoc } from "@/lib/database";
@@ -11,7 +13,9 @@ import type { UserDocument } from "@/types/firestore";
 import { AvatarImage } from "@/components/shared/avatar-image";
 
 export function ProfileModal({ open, user, profile, partner, onClose }: { open: boolean; user: User; profile: UserDocument | null; partner: UserDocument | null; onClose: () => void }) {
+  const { couple } = useCoupleSpace();
   const [displayName, setDisplayName] = useState("");
+  const [publicUid, setPublicUid] = useState("");
   const [nickname, setNickname] = useState("");
   const [birthday, setBirthday] = useState("");
   const [bio, setBio] = useState("");
@@ -22,6 +26,7 @@ export function ProfileModal({ open, user, profile, partner, onClose }: { open: 
   useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.displayName || "");
+    setPublicUid(profile.publicUid || "");
     setNickname(profile.nickname || "");
     setBirthday(profile.birthday || "");
     setBio(profile.bio || "");
@@ -34,7 +39,7 @@ export function ProfileModal({ open, user, profile, partner, onClose }: { open: 
     setSaving(true);
     setError("");
     try {
-      await updateDoc(doc(db, "users", user.uid), { displayName: displayName.trim(), nickname: nickname.trim(), birthday, bio: bio.trim(), photoURL: photoURL.trim() });
+      await updateDoc(doc(db, "users", user.uid), { displayName: displayName.trim(), nickname: nickname.trim(), publicUid: publicUid.trim().toLowerCase(), birthday, bio: bio.trim(), photoURL: photoURL.trim() });
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Chưa thể lưu hồ sơ.");
@@ -49,9 +54,12 @@ export function ProfileModal({ open, user, profile, partner, onClose }: { open: 
         <motion.form className="safe-bottom my-auto max-h-[94dvh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-[#fff8f0] p-5 shadow-2xl sm:p-6" initial={{ y: 70, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 70, opacity: 0 }} onSubmit={save}>
           <div className="flex items-center justify-between"><div><p className="font-handwritten text-xl text-[#a56f78]">Chỉ hai mình nhìn thấy</p><h2 id="profile-title" className="font-display text-2xl font-bold">Thông tin cá nhân</h2></div><button className="grid size-10 place-items-center rounded-full bg-white/70 shadow-soft" type="button" onClick={onClose} aria-label="Đóng"><X className="size-5" /></button></div>
 
+          {couple?.memberIds.length === 1 && <Link href="/pairing" className="primary-button mt-5 w-full" onClick={onClose}>Ghép đôi</Link>}
+
           {partner && <section className="mt-5 flex items-center gap-3 rounded-2xl bg-blush/20 p-4"><span className="size-12 overflow-hidden rounded-full bg-white/70"><AvatarImage src={partner.photoURL} alt="Ảnh người thương" /></span><div><p className="text-xs text-[#98757c]">Người thương của bạn</p><p className="font-bold">{partner.nickname || partner.displayName}</p>{partner.bio && <p className="mt-0.5 text-xs text-[#806e65]">{partner.bio}</p>}</div></section>}
 
           <div className="mt-5 space-y-3">
+            <label className="block text-sm font-semibold">UID của bạn<input className="soft-input mt-1.5" required minLength={3} maxLength={24} pattern="[A-Za-z0-9_]{3,24}" autoCapitalize="none" spellCheck={false} placeholder="Ví dụ: kzi207" value={publicUid} onChange={(event) => setPublicUid(event.target.value)} /><span className="mt-1 block text-xs font-normal text-[#8b756a]">Tự đặt 3–24 chữ cái không dấu, số hoặc dấu gạch dưới để người thương tìm bạn.</span></label>
             <label className="block text-sm font-semibold">Tên hiển thị<input className="soft-input mt-1.5" required maxLength={40} value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
             <label className="block text-sm font-semibold">Tên gọi thân mật<input className="soft-input mt-1.5" maxLength={30} value={nickname} onChange={(event) => setNickname(event.target.value)} /></label>
             <label className="block text-sm font-semibold">Ngày sinh<input className="soft-input mt-1.5" type="date" value={birthday} onChange={(event) => setBirthday(event.target.value)} /></label>
