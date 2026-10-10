@@ -232,7 +232,7 @@ export async function ensureWorkspace(profile: { displayName: string; email: str
 }
 
 export async function findUserByPublicUid(publicUid: string) {
-  return request<{ uid: string; publicUid: string }>("findUserByPublicUid", { publicUid });
+  return request<{ uid: string; publicUid: string; displayName: string }>("findUserByPublicUid", { publicUid });
 }
 
 export async function acceptPairInvite(inviteId: string) {

@@ -344,7 +344,7 @@ export async function executeDatabaseAction(body: JsonRecord, user: DatabaseUser
       const space = records.find(record => record.path === `couples/${profile.data.coupleId}`);
       if (space && Array.isArray(space.data.memberIds) && space.data.memberIds.length > 1 && !space.data.endedAt) throw new Error("Một trong hai tài khoản đã ghép đôi.");
     }
-    return { uid, publicUid };
+    return { uid, publicUid, displayName: String(target.data.displayName || publicUid) };
   }
   if (action === "ensureWorkspace" || action === "acceptPairInvite") return updateWorkspace(action, body, user, records);
   if (action === "get") return readOne(body.path, user, records);

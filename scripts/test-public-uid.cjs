@@ -28,7 +28,11 @@ const save = (publicUid) => run({ action: "write", operation: { type: "update", 
 async function main() {
   rows = [record("users/self", { publicUid: "myuid" }), record("users/other", { publicUid: "kzi207", email: "private", bio: "private" })];
   const found = await lookup(" KZI207 ");
-  assert.equal(JSON.stringify(found), JSON.stringify({ uid: "other", publicUid: "kzi207" }));
+  assert.equal(JSON.stringify(found), JSON.stringify({ uid: "other", publicUid: "kzi207", displayName: "kzi207" }));
+  rows[1].data.displayName = "Test User";
+  assert.equal((await lookup("kzi207")).displayName, "Test User");
+  assert.equal("email" in found, false);
+  assert.equal("bio" in found, false);
   await assert.rejects(lookup("missing"), /Không tìm thấy/);
   await assert.rejects(lookup("myuid"), /chính mình/);
   await assert.rejects(lookup("a/b"), /3–24/);

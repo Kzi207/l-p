@@ -3,8 +3,8 @@
 
 import { signOut, type User } from "firebase/auth";
 import { acceptPairInvite, findUserByPublicUid, addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where } from "@/lib/database";
-import { Check, Clock3, Copy, HeartHandshake, Link2, LoaderCircle, LogOut, Send, UserRound, UsersRound, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Check, Clock3, Copy, HeartHandshake, Link2, LoaderCircle, LogOut, Search, Send, UserRound, UsersRound, X } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
 import { auth, db } from "@/lib/firebase";
@@ -13,7 +13,7 @@ import type { PairInviteDocument } from "@/types/firestore";
 type Invite = PairInviteDocument & { id: string };
 type PersonalTab = "profile" | "invite" | "pending";
 
-export function PairingScreen({ user, openPersonalInitially = false, initialTab = "profile" }: { user: User; openPersonalInitially?: boolean; initialTab?: PersonalTab }) {
+export function PairingScreen({ user, openPersonalInitially = false, initialTab = "profile", standalone = false }: { user: User; openPersonalInitially?: boolean; initialTab?: PersonalTab; standalone?: boolean }) {
   const router = useRouter();
   const { profile, loading, error: profileError } = useCoupleSpace();
   const [displayName, setDisplayName] = useState("");
@@ -23,6 +23,8 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
   const [bio, setBio] = useState("");
   const [photoURL, setPhotoURL] = useState("");
   const [targetUid, setTargetUid] = useState("");
+  const [searchResult, setSearchResult] = useState<Awaited<ReturnType<typeof findUserByPublicUid>> | null>(null);
+  const searchVersion = useRef(0);
   const [incoming, setIncoming] = useState<Invite[]>([]);
   const [outgoing, setOutgoing] = useState<Invite[]>([]);
   const [linkInvite, setLinkInvite] = useState<Invite | null>(null);
@@ -48,7 +50,7 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
     const inviteQuery = query(collection(db, "pairInvites"), where("targetUid", "==", user.uid));
     return onSnapshot(inviteQuery, (snapshot) => {
       setIncoming(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Invite).filter((item) => item.status === "active"));
-    });
+    }, () => setError("Chưa tải được lời mời nhận. Hãy kiểm tra kết nối và thử lại."));
   }, [user.uid]);
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
     const inviteQuery = query(collection(db, "pairInvites"), where("ownerId", "==", user.uid));
     return onSnapshot(inviteQuery, (snapshot) => {
       setOutgoing(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Invite).filter((item) => item.status === "active"));
-    });
+    }, () => setError("Chưa tải được lời mời đã gửi. Hãy kiểm tra kết nối và thử lại."));
   }, [user.uid]);
 
   useEffect(() => {
@@ -64,24 +66,43 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
     const inviteId = new URLSearchParams(window.location.search).get("invite");
     if (!inviteId) return;
     getDoc(doc(db, "pairInvites", inviteId)).then((snapshot) => {
-      if (snapshot.exists()) {
+      if (snapshot.exists() && snapshot.data().status === "active") {
         setLinkInvite({ id: snapshot.id, ...snapshot.data() } as Invite);
         setActiveTab("pending");
         setPersonalOpen(true);
-      }
+      } else setError("Lời mời không còn hiệu lực. Hãy nhờ người thương gửi lời mời mới.");
     }).catch(() => setError("Link mời không hợp lệ hoặc đã hết hiệu lực."));
   }, []);
 
   const invitations = useMemo(() => {
     const all = linkInvite ? [linkInvite, ...incoming] : incoming;
-    return Array.from(new Map(all.filter((item) => item.status === "active").map((item) => [item.id, item])).values());
-  }, [incoming, linkInvite]);
+    return Array.from(new Map(all.filter((item) => item.status === "active" && item.ownerId !== user.uid).map((item) => [item.id, item])).values());
+  }, [incoming, linkInvite, user.uid]);
+
+  async function searchUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const version = ++searchVersion.current;
+    setBusy("search");
+    setSearchResult(null);
+    setError("");
+    setMessage("");
+    try {
+      const result = await findUserByPublicUid(targetUid);
+      if (version === searchVersion.current) setSearchResult(result);
+    } catch (caught) {
+      if (version === searchVersion.current) setError(caught instanceof Error ? caught.message : "Chưa thể tìm người dùng. Hãy thử lại.");
+    } finally {
+      setBusy("");
+    }
+  }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!db) return;
+    if (!db || busy) return;
     setBusy("profile");
     setError("");
+    setMessage("");
     try {
       await updateDoc(doc(db, "users", user.uid), {
         displayName: displayName.trim(),
@@ -99,7 +120,7 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
   }
 
   async function createInvite(target = "") {
-    if (!db || !profile) return;
+    if (!db || !profile || busy) return;
     let cleanTarget = target.trim().toLowerCase();
     if (cleanTarget === user.uid) {
       setError("Bạn không thể tự ghép đôi với chính mình.");
@@ -110,6 +131,17 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
     setMessage("");
     try {
       const found = cleanTarget ? await findUserByPublicUid(cleanTarget) : null;
+      if (found && searchResult && found.uid !== searchResult.uid) {
+        setSearchResult(null);
+        throw new Error("UID này vừa thay đổi người dùng. Hãy tìm lại trước khi gửi lời mời.");
+      }
+      const existing = outgoing.find(invite => invite.targetUid === (found?.uid || ""));
+      if (existing) {
+        setShareLink(`${window.location.origin}/pairing?invite=${existing.id}`);
+        setMessage(found ? "Bạn đã gửi lời mời cho người này. Hãy chờ họ đồng ý." : "Link mời của bạn vẫn còn hiệu lực. Bạn có thể sao chép bên dưới.");
+        if (found) setActiveTab("pending");
+        return;
+      }
       if (found) cleanTarget = found.uid;
       const invitation = await addDoc(collection(db, "pairInvites"), {
         ownerId: user.uid,
@@ -122,6 +154,7 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
       const link = `${window.location.origin}/pairing?invite=${invitation.id}`;
       setShareLink(link);
       setTargetUid("");
+      setSearchResult(null);
       setMessage(cleanTarget ? "Đã gửi lời mời tới UID này." : "Đã tạo link ghép đôi.");
       if (cleanTarget) setActiveTab("pending");
     } catch (caught) {
@@ -132,7 +165,7 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
   }
 
   async function acceptInvite(invite: Invite) {
-    if (!db) return;
+    if (!db || busy) return;
     setBusy(invite.id);
     setError("");
     try {
@@ -147,12 +180,17 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
   }
 
   async function copy(value: string) {
-    await navigator.clipboard.writeText(value);
-    setMessage("Đã sao chép.");
+    setError("");
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage("Đã sao chép. Bạn có thể gửi cho người thương.");
+    } catch {
+      setError("Chưa sao chép được. Bạn có thể nhấn giữ và sao chép UID hoặc link bên dưới.");
+    }
   }
 
   async function cancelInvite(inviteId: string) {
-    if (!db) return;
+    if (!db || busy) return;
     setBusy(`cancel-${inviteId}`);
     setError("");
     try {
@@ -170,24 +208,26 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
   return (
     <main className="min-h-dvh px-4 py-7 sm:px-6">
       <div className="app-frame">
-        <header className="flex items-center justify-between gap-3">
+        {!standalone && <><header className="flex items-center justify-between gap-3">
           <div><p className="font-handwritten text-xl text-[#a56f78]">Không gian chỉ của hai người</p><h1 className="font-display text-3xl font-extrabold">Love Days</h1></div>
           <div className="flex gap-2"><button className="primary-button px-3" type="button" onClick={() => setPersonalOpen(true)}><UserRound className="size-4" />Cá nhân</button><button className="secondary-button px-3" type="button" onClick={() => auth && signOut(auth)} aria-label="Đăng xuất"><LogOut className="size-4" /><span className="hidden sm:inline">Thoát</span></button></div>
         </header>
 
         <section className="soft-card mt-8 flex min-h-[28rem] flex-col items-center justify-center px-6 text-center"><span className="grid size-24 place-items-center overflow-hidden rounded-full bg-blush/30 shadow-insetSoft">{photoURL ? <>{/* eslint-disable-next-line @next/next/no-img-element */}<img className="size-full object-cover" src={photoURL} alt="" /></> : <UserRound className="size-10 text-[#ce7787]" />}</span><p className="mt-5 font-handwritten text-2xl text-[#a56f78]">Chào {nickname || displayName || "bạn"}</p><h2 className="font-display text-3xl font-extrabold">Bạn chưa ghép đôi</h2><p className="mt-3 max-w-md text-sm leading-6 text-[#806e65]">Mở mục Cá nhân để đặt thông tin, gửi lời mời cho bạn đời hoặc kiểm tra lời mời đang chờ.</p><button className="primary-button mt-6" type="button" onClick={() => { setActiveTab(invitations.length ? "pending" : "invite"); setPersonalOpen(true); }}><HeartHandshake className="size-5" />{invitations.length ? `Bạn có ${invitations.length} lời mời` : "Ghép đôi"}</button></section>
 
-        {personalOpen && <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-[#3f302a]/45 p-3 backdrop-blur-md sm:items-center" role="dialog" aria-modal="true" aria-labelledby="personal-title" onMouseDown={(event) => event.target === event.currentTarget && setPersonalOpen(false)}><section className="safe-bottom my-auto max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-[2rem] bg-[#fff8f0] p-5 shadow-2xl sm:p-6"><div className="flex items-center justify-between"><div><p className="font-handwritten text-xl text-[#a56f78]">Góc riêng của bạn</p><h2 id="personal-title" className="font-display text-2xl font-bold">Cá nhân</h2></div><button className="grid size-10 place-items-center rounded-full bg-white/70 shadow-soft" type="button" onClick={() => setPersonalOpen(false)} aria-label="Đóng"><X className="size-5" /></button></div>
+        </>}
 
-        <div className="mt-5 grid grid-cols-3 gap-1 rounded-2xl bg-[#f1e4da] p-1"><button className={`min-h-12 rounded-xl px-2 text-xs font-bold ${activeTab === "profile" ? "bg-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setActiveTab("profile")}><UserRound className="mx-auto mb-0.5 size-4" />Thông tin</button><button className={`min-h-12 rounded-xl px-2 text-xs font-bold ${activeTab === "invite" ? "bg-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setActiveTab("invite")}><Send className="mx-auto mb-0.5 size-4" />Ghép đôi</button><button className={`relative min-h-12 rounded-xl px-2 text-xs font-bold ${activeTab === "pending" ? "bg-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setActiveTab("pending")}><Clock3 className="mx-auto mb-0.5 size-4" />Đang chờ{invitations.length > 0 && <span className="absolute right-2 top-1 grid size-5 place-items-center rounded-full bg-[#d66f82] text-[10px] text-white">{invitations.length}</span>}</button></div>
+        {(standalone || personalOpen) && <div className={standalone ? "" : "fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-[#3f302a]/45 p-3 backdrop-blur-md sm:items-center"} role={standalone ? undefined : "dialog"} aria-modal={standalone ? undefined : true} aria-labelledby="personal-title" onMouseDown={(event) => !standalone && event.target === event.currentTarget && setPersonalOpen(false)}><section className={standalone ? "soft-card w-full p-5 sm:p-6" : "safe-bottom my-auto max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-[2rem] bg-[#fff8f0] p-5 shadow-2xl sm:p-6"}><div className="flex items-center justify-between"><div><p className="font-handwritten text-xl text-[#a56f78]">Góc riêng của bạn</p><h2 id="personal-title" className="font-display text-2xl font-bold">{standalone ? "Ghép đôi" : "Cá nhân"}</h2></div>{!standalone && <button className="grid size-10 place-items-center rounded-full bg-white/70 shadow-soft" type="button" onClick={() => setPersonalOpen(false)} aria-label="Đóng"><X className="size-5" /></button>}</div>
 
-        {(error || profileError) && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{error || profileError}</p>}
-        {message && <p className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
+        <div className="mt-5 grid grid-cols-3 gap-1 rounded-2xl bg-[#f1e4da] p-1"><button className={`min-h-12 rounded-xl px-2 text-xs font-bold ${activeTab === "profile" ? "bg-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setActiveTab("profile")}><UserRound className="mx-auto mb-0.5 size-4" />Thông tin</button><button className={`min-h-12 rounded-xl px-2 text-xs font-bold ${activeTab === "invite" ? "bg-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setActiveTab("invite")}><Send className="mx-auto mb-0.5 size-4" />Ghép đôi</button><button className={`relative min-h-12 rounded-xl px-2 text-xs font-bold ${activeTab === "pending" ? "bg-white shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setActiveTab("pending")}><Clock3 className="mx-auto mb-0.5 size-4" />Lời mời{invitations.length > 0 && <span className="absolute right-2 top-1 grid size-5 place-items-center rounded-full bg-[#d66f82] text-[10px] text-white">{invitations.length}</span>}</button></div>
+
+        {(error || profileError) && <p role="alert" className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{error || profileError}</p>}
+        {message && <p role="status" className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
 
         <div className="mt-5">
           <form className={activeTab === "profile" ? "block" : "hidden"} onSubmit={saveProfile}>
             <h2 className="flex items-center gap-2 font-display text-xl font-bold"><UserRound className="size-5 text-[#cf7485]" />Thông tin của bạn</h2>
-            <p className="mt-1 text-xs text-[#8b756a]">Bạn tự đặt thông tin này và chỉ người đã ghép đôi mới xem được.</p>
+            <p className="mt-1 text-xs text-[#8b756a]">UID và tên hiển thị giúp người thương tìm đúng bạn. Thông tin còn lại chỉ người đã ghép đôi mới xem được.</p>
             <div className="mt-4 space-y-3">
               <label className="block text-sm font-semibold">UID của bạn<input className="soft-input mt-1.5" required minLength={3} maxLength={24} pattern="[A-Za-z0-9_]{3,24}" autoCapitalize="none" spellCheck={false} placeholder="Ví dụ: kzi207" value={publicUid} onChange={(event) => setPublicUid(event.target.value)} /><span className="mt-1 block text-xs font-normal text-[#8b756a]">Tự đặt 3–24 chữ cái không dấu, số hoặc dấu gạch dưới để người thương tìm bạn.</span></label>
             <label className="block text-sm font-semibold">Tên hiển thị<input className="soft-input mt-1.5" required maxLength={40} value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
@@ -206,14 +246,32 @@ export function PairingScreen({ user, openPersonalInitially = false, initialTab 
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#9b7780]">UID của bạn</p>
                 <div className="mt-1 flex items-center gap-2"><code className="min-w-0 flex-1 break-all text-xs">{profile?.publicUid || "Chưa đặt UID"}</code><button className="grid size-9 shrink-0 place-items-center rounded-xl bg-blush/35" type="button" disabled={!profile?.publicUid} onClick={() => copy(profile?.publicUid || "")} aria-label="Sao chép UID"><Copy className="size-4" /></button></div>
               </div>
-              <button className="primary-button mt-4 w-full" type="button" disabled={busy === "link"} onClick={() => createInvite()}>{busy === "link" ? <LoaderCircle className="size-5 animate-spin" /> : <Link2 className="size-5" />}Tạo link chia sẻ</button>
-              {shareLink && <div className="mt-3 flex gap-2"><input className="soft-input min-w-0 text-xs" readOnly value={shareLink} /><button className="secondary-button shrink-0 px-3" type="button" onClick={() => copy(shareLink)}><Copy className="size-4" /></button></div>}
+              {!profile?.publicUid && <button className="secondary-button mt-3 w-full" type="button" onClick={() => setActiveTab("profile")}>Đặt UID để người thương tìm bạn</button>}
 
-              <div className="my-4 flex items-center gap-3 text-xs text-[#9b857b]"><span className="h-px flex-1 bg-[#e5d5cb]" />hoặc nhập UID<span className="h-px flex-1 bg-[#e5d5cb]" /></div>
-              <div className="flex gap-2"><input className="soft-input min-w-0" value={targetUid} onChange={(event) => setTargetUid(event.target.value)} aria-label="UID người thương" autoCapitalize="none" spellCheck={false} placeholder="Ví dụ: kzi207" /><button className="secondary-button shrink-0 px-3" type="button" aria-label="Tìm và gửi lời mời ghép đôi" disabled={!targetUid.trim() || busy === "uid"} onClick={() => createInvite(targetUid)}>{busy === "uid" ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}</button></div>
+              <form className="mt-5" onSubmit={searchUser}>
+                <label className="block text-sm font-semibold" htmlFor="partner-uid">UID người thương</label>
+                <p id="uid-help" className="mt-1 text-xs leading-5 text-[#806e65]">Nhập UID họ tự đặt, ví dụ kzi207. Bạn sẽ xem người nhận trước khi gửi lời mời.</p>
+                <div className="mt-2 flex gap-2">
+                  <input id="partner-uid" aria-describedby="uid-help" className="soft-input min-w-0" required minLength={3} maxLength={24} value={targetUid} onChange={(event) => { searchVersion.current += 1; setTargetUid(event.target.value); setSearchResult(null); setError(""); setMessage(""); }} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="Ví dụ: kzi207" enterKeyHint="search" />
+                  <button className="primary-button shrink-0 px-4" type="submit" disabled={!targetUid.trim() || Boolean(busy)}>{busy === "search" ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />}Tìm</button>
+                </div>
+              </form>
+              {searchResult && <div className="mt-4 rounded-2xl border border-[#eac8cf] bg-white/80 p-4" role="status">
+                <p className="text-xs text-[#98757c]">Người nhận lời mời</p>
+                <p className="mt-1 break-words font-bold">{searchResult.displayName}</p>
+                <p className="mt-1 text-sm text-[#806e65]">@{searchResult.publicUid}</p>
+                <button className="primary-button mt-4 w-full" type="button" disabled={Boolean(busy)} onClick={() => createInvite(searchResult.publicUid)}>{busy === "uid" ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}Gửi lời mời ghép đôi</button>
+                <p className="mt-2 text-xs leading-5 text-[#806e65]">Hai bạn chỉ ghép đôi khi người nhận đồng ý. Dữ liệu trong không gian cá nhân của cả hai sẽ được chuyển vào không gian chung.</p>
+              </div>}
+
+              <details className="mt-6 border-t border-[#eadbd4] pt-4">
+                <summary className="cursor-pointer py-2 text-sm font-semibold text-[#98757c]">Hoặc mời bằng link</summary>
+                <button className="secondary-button mt-3 w-full" type="button" disabled={Boolean(busy)} onClick={() => createInvite()}>{busy === "link" ? <LoaderCircle className="size-5 animate-spin" /> : <Link2 className="size-5" />}Tạo link chia sẻ</button>
+                {shareLink && <div className="mt-3 flex gap-2"><input aria-label="Link ghép đôi" className="soft-input min-w-0 text-xs" readOnly value={shareLink} onFocus={(event) => event.target.select()} /><button aria-label="Sao chép link ghép đôi" className="secondary-button shrink-0 px-3" type="button" onClick={() => copy(shareLink)}><Copy className="size-4" /></button></div>}
+              </details>
             </div>}
 
-            {activeTab === "pending" && <div><h2 className="font-display text-xl font-bold">Lời mời đang chờ</h2>{invitations.length === 0 && outgoing.length === 0 ? <div className="mt-4 rounded-2xl bg-white/60 p-7 text-center"><Clock3 className="mx-auto size-9 text-[#d18a96]" /><p className="mt-3 text-sm text-[#806e65]">Chưa có lời mời nào đang chờ.</p></div> : <div className="mt-3 space-y-3">{invitations.map((invite) => <div className="rounded-2xl bg-white/65 p-4" key={invite.id}><p className="text-[10px] font-bold uppercase tracking-wider text-[#a16f78]">Lời mời nhận được</p><p className="mt-1 text-sm"><b>{invite.ownerName}</b> muốn ghép đôi với bạn.</p><button className="primary-button mt-3 w-full" type="button" disabled={busy === invite.id} onClick={() => acceptInvite(invite)}><HeartHandshake className="size-5" />{busy === invite.id ? "Đang ghép đôi..." : "Chấp nhận"}</button></div>)}{outgoing.map((invite) => <div className="rounded-2xl bg-white/65 p-4" key={invite.id}><p className="text-[10px] font-bold uppercase tracking-wider text-[#a16f78]">Đang đợi đồng ý</p><p className="mt-1 text-sm">{invite.targetUid ? <>Đã gửi tới UID <code className="break-all text-xs">{invite.targetPublicUid || invite.targetUid}</code>.</> : "Link ghép đôi đang chờ người thương mở và chấp nhận."}</p><div className="mt-3 flex gap-2"><button className="secondary-button flex-1" type="button" onClick={() => copy(`${window.location.origin}/pairing?invite=${invite.id}`)}><Copy className="size-4" />Sao chép link</button><button className="secondary-button text-red-700" type="button" disabled={busy === `cancel-${invite.id}`} onClick={() => cancelInvite(invite.id)}>Hủy</button></div></div>)}</div>}</div>}
+            {activeTab === "pending" && <div><h2 className="font-display text-xl font-bold">Lời mời đang chờ</h2>{invitations.length === 0 && outgoing.length === 0 ? <div className="mt-4 rounded-2xl bg-white/60 p-7 text-center"><Clock3 className="mx-auto size-9 text-[#d18a96]" /><p className="mt-3 text-sm text-[#806e65]">Chưa có lời mời nào đang chờ.</p><button className="secondary-button mt-4" type="button" onClick={() => setActiveTab("invite")}>Tìm người thương bằng UID</button></div> : <div className="mt-3 space-y-3">{invitations.map((invite) => <div className="rounded-2xl bg-white/65 p-4" key={invite.id}><p className="text-[10px] font-bold uppercase tracking-wider text-[#a16f78]">Lời mời nhận được</p><p className="mt-1 text-sm"><b>{invite.ownerName}</b> muốn ghép đôi với bạn.</p><button className="primary-button mt-3 w-full" type="button" disabled={Boolean(busy)} onClick={() => acceptInvite(invite)}><HeartHandshake className="size-5" />{busy === invite.id ? "Đang ghép đôi..." : "Chấp nhận"}</button></div>)}{outgoing.map((invite) => <div className="rounded-2xl bg-white/65 p-4" key={invite.id}><p className="text-[10px] font-bold uppercase tracking-wider text-[#a16f78]">Đang đợi đồng ý</p><p className="mt-1 text-sm">{invite.targetUid ? <>Đã gửi tới UID <code className="break-all text-xs">{invite.targetPublicUid || invite.targetUid}</code>.</> : "Link ghép đôi đang chờ người thương mở và chấp nhận."}</p><div className="mt-3 flex gap-2"><button className="secondary-button flex-1" type="button" onClick={() => copy(`${window.location.origin}/pairing?invite=${invite.id}`)}><Copy className="size-4" />Sao chép link</button><button className="secondary-button text-red-700" type="button" disabled={Boolean(busy)} onClick={() => cancelInvite(invite.id)}>Hủy</button></div></div>)}</div>}</div>}
           </section>
         </div>
         </section></div>}

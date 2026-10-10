@@ -4,7 +4,7 @@
 import { signOut } from "firebase/auth";
 import { doc, runTransaction, serverTimestamp, updateDoc } from "@/lib/database";
 import imageCompression from "browser-image-compression";
-import { Bell, Camera, Check, Copy, DatabaseBackup, LoaderCircle, LogOut, Unlink } from "lucide-react";
+import { Bell, Camera, Check, Copy, DatabaseBackup, HeartHandshake, LoaderCircle, LogOut, Unlink } from "lucide-react";
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { LoginScreen } from "@/components/auth/login-screen";
@@ -179,7 +179,10 @@ export function ProfileScreen() {
           <div><p className="font-handwritten text-xl text-[#a56f78]">Góc riêng của bạn</p><h1 className="font-display text-3xl font-extrabold">Cá nhân</h1></div>
         </header>
 
-        {couple.memberIds.length === 1 && <Link href="/pairing" className="primary-button mt-6 w-full">Ghép đôi</Link>}
+        {couple.memberIds.length === 1 && <section className="soft-card mt-6 border border-[#edc8d0] p-5">
+          <div className="flex items-center gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-full bg-blush/30"><HeartHandshake className="size-6 text-[#c66f80]" /></span><div><h2 className="font-bold">Bạn chưa ghép đôi</h2><p className="mt-1 text-sm text-[#806e65]">Tìm người thương bằng UID hoặc xem lời mời nhận được.</p></div></div>
+          <Link href="/pairing" className="primary-button mt-4 w-full">Ghép đôi</Link>
+        </section>}
 
         {partner && <section className="soft-card mt-6 p-4">
           <div className="flex items-center gap-4">

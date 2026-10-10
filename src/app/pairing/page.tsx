@@ -9,5 +9,5 @@ export default function PairingPage() {
   const { couple } = useCoupleSpace();
   if (!user) return <LoginScreen />;
   if (couple && couple.memberIds.length > 1) return <main className="p-6 text-center"><p>Bạn đã ghép đôi.</p><Link className="primary-button mt-4" href="/profile">Về Cá nhân</Link></main>;
-  return <><Link className="secondary-button m-4" href="/profile">Về Cá nhân</Link><PairingScreen user={user} openPersonalInitially initialTab="invite" /></>;
+  return <><Link className="secondary-button m-4" href="/profile">Về Cá nhân</Link><PairingScreen user={user} standalone initialTab="invite" /></>;
 }
