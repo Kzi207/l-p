@@ -15,6 +15,11 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  async rewrites() {
+    return [
+      { source: "/20-10", destination: "/20-10/index.html" },
+    ];
+  },
   experimental: {
     serverComponentsExternalPackages: ["youtubei.js", "ffmpeg-static"],
   },
