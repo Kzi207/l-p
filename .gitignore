@@ -17,6 +17,7 @@
 firebase-debug.log
 
 # misc
+/.20-10-git-backup/
 .DS_Store
 *.pem
 service-account*.json
