@@ -21,9 +21,11 @@ import {
   Type,
   Users,
   Check,
+  Crop,
 } from "lucide-react";
+import { LocketImageCropper } from "./locket-image-cropper";
 import { getLocketFriends, getLocketPresets, postLocketMoment } from "@/lib/locket/locket-client-api";
-import { LOCKET_FRAMES, applyLocketFrame } from "@/lib/locket/locket-frames";
+import { LOCKET_FRAMES, getLocketFrameAsset, applyLocketFrame } from "@/lib/locket/locket-frames";
 import { AvatarImage } from "@/components/shared/avatar-image";
 
 interface PresetItem {
@@ -64,6 +66,8 @@ export function LocketCameraStudio({ onPostSuccess, onPreviewChange, compact = f
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [cropSource, setCropSource] = useState<File | null>(null);
+  const [originalUpload, setOriginalUpload] = useState<File | null>(null);
 
   // Video Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -107,11 +111,11 @@ export function LocketCameraStudio({ onPostSuccess, onPreviewChange, compact = f
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { onPreviewChange?.(!!previewUrl); return () => onPreviewChange?.(false); }, [previewUrl, onPreviewChange]);
+  useEffect(() => { onPreviewChange?.(!!previewUrl || !!cropSource); return () => onPreviewChange?.(false); }, [previewUrl, cropSource, onPreviewChange]);
   useEffect(() => {
-    if (!previewUrl && resumeCamera.current) { resumeCamera.current = false; void startCameraCallback.current(); }
-    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
-  }, [previewUrl]);
+    if (!previewUrl && !cropSource && resumeCamera.current) { resumeCamera.current = false; void startCameraCallback.current(); }
+  }, [previewUrl, cropSource]);
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
   useEffect(() => {
     let active = true;
     getLocketFriends().then(data => { if (active) setFriends(data); }).catch(() => { if (active) setFriendError("Chưa tải được bạn bè. Bạn vẫn có thể gửi đến tất cả."); });
@@ -275,6 +279,14 @@ export function LocketCameraStudio({ onPostSuccess, onPreviewChange, compact = f
     const file = e.target.files?.[0];
     if (!file) return;
     const isVid = file.type.startsWith("video/");
+    e.target.value = "";
+    stopCamera();
+    if (!isVid) {
+      setOriginalUpload(file);
+      setCropSource(file);
+      return;
+    }
+    setOriginalUpload(null);
     setMediaFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setMediaType(isVid ? "video" : "image");
@@ -288,6 +300,7 @@ export function LocketCameraStudio({ onPostSuccess, onPreviewChange, compact = f
     setDecorationOpen(false);
     setCaptionEditing(false);
     setMediaFile(null);
+    setOriginalUpload(null);
     setPreviewUrl(null);
     setPostError("");
     setPostSuccessMessage("");
@@ -349,12 +362,15 @@ export function LocketCameraStudio({ onPostSuccess, onPreviewChange, compact = f
     ? `linear-gradient(135deg, ${customColors[0]}, ${customColors[1]})`
     : customColors[0] || "rgba(0,0,0,0.65)";
 
+  if (cropSource) return <LocketImageCropper file={cropSource} onCancel={() => { if (!previewUrl) resumeCamera.current = true; setCropSource(null); }} onApply={file => { setMediaFile(file); setPreviewUrl(URL.createObjectURL(file)); setMediaType("image"); setCropSource(null); }} />;
+
   if (compact && previewUrl) {
     const locked = posting || !!postSuccessMessage;
     return <div className="locket-send-preview" data-gesture-scroll>
-      <header className="locket-send-heading"><span /> <h2>Gửi đến…</h2><a href={previewUrl} download={mediaFile?.name || "locket.jpg"} aria-label="Lưu ảnh hoặc video" className="locket-reference-icon"><Download className="size-5" /></a></header>
+      <header className="locket-send-heading">{mediaType === "image" && mediaFile ? <button type="button" disabled={locked} onClick={() => setCropSource(originalUpload || mediaFile)} aria-label="Cắt lại ảnh" className="locket-reference-icon"><Crop className="size-5" /></button> : <span />} <h2>Gửi đến…</h2><a href={previewUrl} download={mediaFile?.name || "locket.jpg"} aria-label="Lưu ảnh hoặc video" className="locket-reference-icon"><Download className="size-5" /></a></header>
       <div className={`locket-send-photo locket-frame-${selectedFrame}`}>
         {mediaType === "video" ? <video src={previewUrl} autoPlay loop playsInline muted className="size-full object-cover" /> : /* eslint-disable-next-line @next/next/no-img-element */ <img src={previewUrl} alt="Ảnh vừa chụp" className="size-full object-cover" />}
+        {getLocketFrameAsset(selectedFrame) && <img src={getLocketFrameAsset(selectedFrame)!} alt="" className="locket-frame-art" aria-hidden="true" />}
         <div className="locket-send-caption">
           {captionEditing ? <input ref={captionInputRef} autoFocus maxLength={200} aria-label="Chú thích ảnh" value={captionText} placeholder="Thêm một tin nhắn" onChange={event => { setCaptionText(event.target.value); setSelectedPreset(null); }} onBlur={() => setCaptionEditing(false)} onKeyDown={event => { if (event.key === "Enter") setCaptionEditing(false); }} style={{ background: gradientStyle, color: customTextColor }} disabled={locked} /> : <button type="button" disabled={locked} onClick={() => setCaptionEditing(true)} style={{ background: gradientStyle, color: customTextColor }}>{captionText ? <>{customIcon && <span>{customIcon} </span>}{captionText}</> : "Thêm một tin nhắn"}</button>}
         </div>
@@ -377,7 +393,7 @@ export function LocketCameraStudio({ onPostSuccess, onPreviewChange, compact = f
         <section ref={captionSheetRef} role="dialog" aria-modal="true" aria-label="Chú thích" className="locket-caption-sheet" onClick={event => event.stopPropagation()} data-gesture-scroll>
           <div className="locket-caption-handle" /><header><h3>Chú thích</h3><button type="button" onClick={() => setDecorationOpen(false)} aria-label="Xong, đóng chú thích"><Check className="size-5" /></button></header>
           <div className="locket-caption-tools"><button type="button" aria-pressed={activeTab === "frames"} onClick={() => setActiveTab("frames")}><Heart className="size-5" />Khung ảnh</button><button type="button" aria-pressed={activeTab === "custom"} onClick={() => { setActiveTab("custom"); setSelectedPreset(null); }}><Type className="size-5" />Văn bản</button><button type="button" aria-pressed={activeTab === "custom"} onClick={() => setActiveTab("custom")}><Palette className="size-5" />Màu sắc</button><button type="button" aria-pressed={activeTab === "presets"} onClick={() => setActiveTab("presets")}><Sparkles className="size-5" />Nhãn cảm xúc</button></div>
-          {activeTab === "frames" ? <div className="locket-frame-picker">{FRAMES.map(frame => <button key={frame.id} type="button" aria-pressed={selectedFrame === frame.id} disabled={mediaType === "video" && frame.id !== "none"} onClick={() => setSelectedFrame(frame.id)}><span className={`locket-frame-sample locket-frame-${frame.id}`}><span /></span><b>{frame.name}</b><small>{frame.desc}</small></button>)}{mediaType === "video" && <p>Khung ảnh chỉ áp dụng cho ảnh.</p>}</div> : activeTab === "custom" ? <div className="space-y-5 py-4">
+          {activeTab === "frames" ? <div className="locket-frame-picker">{FRAMES.map(frame => <button key={frame.id} type="button" aria-pressed={selectedFrame === frame.id} disabled={mediaType === "video" && frame.id !== "none"} onClick={() => setSelectedFrame(frame.id)}><span className={`locket-frame-sample locket-frame-${frame.id}`}><span />{getLocketFrameAsset(frame.id) && <img src={getLocketFrameAsset(frame.id)!} alt="" className="locket-frame-art" aria-hidden="true" />}</span><b>{frame.name}</b><small>{frame.desc}</small></button>)}{mediaType === "video" && <p>Khung ảnh chỉ áp dụng cho ảnh.</p>}</div> : activeTab === "custom" ? <div className="space-y-5 py-4">
             <input autoFocus maxLength={200} aria-label="Nội dung chú thích" className="soft-input" placeholder="Viết một điều dễ thương…" value={captionText} onChange={event => { setCaptionText(event.target.value); setSelectedPreset(null); }} />
             <div className="flex flex-wrap gap-2">{POPULAR_GRADIENTS.map(style => <button key={style.name} type="button" aria-label={style.name} aria-pressed={customColors[0] === style.colors[0]} style={{ background: `linear-gradient(135deg,${style.colors.join(",")})` }} className={`h-10 w-14 rounded-full ${customColors[0] === style.colors[0] ? "ring-2 ring-[#b5687d] ring-offset-2" : ""}`} onClick={() => { setCustomColors(style.colors); setSelectedPreset(null); }} />)}</div>
             <div className="flex flex-wrap gap-1">{POPULAR_EMOJIS.map(emoji => <button key={emoji} type="button" aria-label={`Biểu tượng ${emoji}`} aria-pressed={customIcon === emoji} onClick={() => { setCustomIcon(emoji); setSelectedPreset(null); }} className={`grid size-10 place-items-center rounded-full text-xl ${customIcon === emoji ? "bg-[#f7dce3]" : ""}`}>{emoji}</button>)}<button type="button" onClick={() => { setCustomIcon(null); setSelectedPreset(null); }} className="px-3 text-xs locket-muted">Bỏ biểu tượng</button></div>

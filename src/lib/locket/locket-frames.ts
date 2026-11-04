@@ -5,7 +5,22 @@ export const LOCKET_FRAMES = [
   { id: "film", name: "Film 35mm", desc: "Thước phim hoài niệm" },
   { id: "neon", name: "Ánh hồng", desc: "Viền hồng nổi bật" },
   { id: "rounded", name: "Mây hồng", desc: "Khung pastel mềm mại" },
+  { id: "sakura", name: "Hoa anh đào", desc: "Cành hoa hồng phấn dịu dàng" },
+  { id: "daisies", name: "Cúc họa mi", desc: "Cánh trắng trên nền kem nắng" },
+  { id: "vines", name: "Dây leo", desc: "Lá xanh và những bông hoa nhỏ" },
+  { id: "lace", name: "Ren cổ điển", desc: "Đường ren và hoa văn hoài niệm" },
+  { id: "stargarden", name: "Vườn sao", desc: "Trăng vàng, hoa tím và ánh sao" },
+  { id: "travel", name: "Du ký", desc: "Bản đồ cũ, bưu thiếp và la bàn" },
+  { id: "moon", name: "Đêm trăng", desc: "Giấy xé, rừng thông và đèn lồng" },
+  { id: "camera", name: "Máy ảnh cổ", desc: "Cuộn phim và kỷ niệm màu nắng" },
 ] as const;
+export const DECORATIVE_FRAME_IDS: readonly string[] = ["sakura", "daisies", "vines", "lace", "stargarden"];
+const SCRAPBOOK_FRAME_IDS: readonly string[] = ["travel", "moon", "camera"];
+export function getLocketFrameAsset(frame: string): string | null {
+  if (DECORATIVE_FRAME_IDS.includes(frame)) return `/locket-frames/${frame}.svg`;
+  if (SCRAPBOOK_FRAME_IDS.includes(frame)) return `/locket-frames/${frame}.png`;
+  return null;
+}
 
 export async function applyLocketFrame(file: File, frame: string): Promise<File> {
   if (frame === "none") return file;
@@ -19,7 +34,8 @@ export async function applyLocketFrame(file: File, frame: string): Promise<File>
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1080;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Trình duyệt không hỗ trợ tạo khung ảnh.");
-    const edge = frame === "polaroid" ? 43 : frame === "film" ? 54 : frame === "neon" ? 32 : 54;
+    const decorative = DECORATIVE_FRAME_IDS.includes(frame);
+    const edge = SCRAPBOOK_FRAME_IDS.includes(frame) ? 130 : decorative ? 0 : frame === "polaroid" ? 43 : frame === "film" ? 54 : frame === "neon" ? 32 : 54;
     const top = frame === "film" ? 97 : edge;
     const bottom = frame === "polaroid" ? 130 : top;
     ctx.fillStyle = frame === "film" ? "#29221f" : frame === "polaroid" ? "#fffaf2" : frame === "neon" ? "#d881a0" : "#f7dce6";
@@ -28,6 +44,13 @@ export async function applyLocketFrame(file: File, frame: string): Promise<File>
     const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
     ctx.save(); ctx.beginPath(); ctx.roundRect(edge, top, width, height, frame === "rounded" ? 100 : 8); ctx.clip();
     ctx.drawImage(image, edge + (width - image.naturalWidth * scale) / 2, top + (height - image.naturalHeight * scale) / 2, image.naturalWidth * scale, image.naturalHeight * scale); ctx.restore();
+    const frameAsset = getLocketFrameAsset(frame);
+    if (frameAsset) {
+      const overlay = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error("Không thể tải hoa văn của khung ảnh.")); img.src = frameAsset;
+      });
+      ctx.drawImage(overlay, 0, 0, 1080, 1080);
+    }
     if (frame === "hearts") {
       ctx.fillStyle = "#ce7a94"; ctx.font = "38px sans-serif"; ctx.textAlign = "center";
       for (let position = 90; position < 1080; position += 150) { ctx.fillText("♥", position, 42); ctx.fillText("♥", position, 1065); }

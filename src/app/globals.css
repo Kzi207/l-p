@@ -109,6 +109,21 @@ video { display: block; }
 }
 
 @layer components {
+  .locket-crop-editor { display: flex; min-height: 100%; flex-direction: column; gap: 18px; padding: 10px 4px 24px; }
+  .locket-crop-editor header { display: flex; align-items: center; justify-content: space-between; color: var(--locket-text); }
+  .locket-crop-editor header button { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid white; border-radius: 50%; background: #fff8f3; color: var(--locket-accent); }
+  .locket-crop-editor h2 { font-size: 18px; font-weight: 700; }
+  .locket-crop-viewport { position: relative; width: min(100%, max(180px, calc(100dvh - 280px))); aspect-ratio: 1; flex-shrink: 0; overflow: hidden; margin: 0 auto; border: 3px solid white; border-radius: 28px; background: #e8d9d1; cursor: grab; touch-action: none; user-select: none; }
+  .locket-crop-viewport:active { cursor: grabbing; }
+  .locket-crop-viewport img { position: absolute; max-width: none; pointer-events: none; }
+  .locket-crop-grid { position: absolute; inset: 0; pointer-events: none; }
+  .locket-crop-grid i { position: absolute; background: #ffffff60; }
+  .locket-crop-grid i:nth-child(1), .locket-crop-grid i:nth-child(2) { top: 0; bottom: 0; width: 1px; }
+  .locket-crop-grid i:nth-child(1) { left: 33.333%; } .locket-crop-grid i:nth-child(2) { left: 66.667%; }
+  .locket-crop-grid i:nth-child(3), .locket-crop-grid i:nth-child(4) { right: 0; left: 0; height: 1px; }
+  .locket-crop-grid i:nth-child(3) { top: 33.333%; } .locket-crop-grid i:nth-child(4) { top: 66.667%; }
+  .locket-crop-zoom { display: flex; width: min(100%, 340px); align-items: center; gap: 12px; margin: 0 auto; color: var(--locket-muted); font-size: 12px; }
+  .locket-crop-zoom input { min-width: 0; flex: 1; accent-color: #c87890; }
   .locket-reference-shell { --locket-text: #73544b; --locket-muted: #a18277; --locket-accent: #c87890; }
   .locket-text { color: var(--locket-text); }
   .locket-muted { color: var(--locket-muted); }
@@ -120,6 +135,9 @@ video { display: block; }
   .locket-frame-picker b { font-size: 12px; }
   .locket-frame-sample { position: relative; display: block; width: 80px; height: 80px; overflow: hidden; border-radius: 8px; }
   .locket-frame-sample > span { display: block; width: 100%; height: 100%; border-radius: 4px; background: linear-gradient(150deg, #e4bfce, #a7bdac 65%, #f4ddab); }
+  .locket-frame-art { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .locket-send-photo:is(.locket-frame-travel, .locket-frame-moon, .locket-frame-camera), .locket-frame-sample:is(.locket-frame-travel, .locket-frame-moon, .locket-frame-camera) { padding: 12%; background: #e4d8bd; }
+  .locket-send-caption { z-index: 2; }
   .locket-send-photo.locket-frame-polaroid, .locket-frame-sample.locket-frame-polaroid { padding: 4% 4% 12%; background: #fffaf2; }
   .locket-send-photo.locket-frame-hearts, .locket-frame-sample.locket-frame-hearts { padding: 5%; background: #f7dce6; }
   .locket-frame-hearts::before, .locket-frame-hearts::after { position: absolute; right: 0; left: 0; color: #ce7a94; font-size: clamp(10px, 2vw, 16px); text-align: center; letter-spacing: 10px; line-height: 1; content: "♥ ♥ ♥ ♥ ♥"; pointer-events: none; }
