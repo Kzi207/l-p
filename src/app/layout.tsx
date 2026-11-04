@@ -6,6 +6,8 @@ import { CoupleProvider } from "@/components/providers/couple-provider";
 import { PushNotificationListener } from "@/components/providers/push-notification-listener";
 import { GlobalNotifications } from "@/components/notifications/global-notifications";
 import { MusicPlayerProvider } from "@/components/providers/music-player-provider";
+import { LocketAuthGate } from "@/components/providers/locket-auth-gate";
+import { MouseDragScroll } from "@/components/providers/mouse-drag-scroll";
 import "./globals.css";
 
 const baloo = Baloo_2({ subsets: ["latin", "vietnamese"], variable: "--font-baloo", display: "swap" });
@@ -38,7 +40,18 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="vi">
       <body className={`${baloo.variable} ${inter.variable} ${caveat.variable}`}>
-        <AuthProvider><CoupleProvider><MusicPlayerProvider><PushNotificationListener /><GlobalNotifications />{children}</MusicPlayerProvider></CoupleProvider></AuthProvider>
+        <MouseDragScroll />
+        <AuthProvider>
+          <CoupleProvider>
+            <LocketAuthGate>
+              <MusicPlayerProvider>
+                <PushNotificationListener />
+                <GlobalNotifications />
+                {children}
+              </MusicPlayerProvider>
+            </LocketAuthGate>
+          </CoupleProvider>
+        </AuthProvider>
       </body>
     </html>
   );

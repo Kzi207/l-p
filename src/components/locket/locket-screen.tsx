@@ -1,239 +1,61 @@
-"use client";
-/* eslint-disable @next/next/no-img-element */
-
-import { motion } from "framer-motion";
-import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, updateDoc } from "@/lib/database";
-import { Camera, ChevronDown, Heart, ImagePlus, LoaderCircle, MessageCircle, MessagesSquare, RefreshCw, SwitchCamera, Trash2, Upload } from "lucide-react";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { LoginScreen } from "@/components/auth/login-screen";
-import { BottomNav } from "@/components/layout/bottom-nav";
-import { LocketChat } from "@/components/locket/locket-chat";
-import { LocketThreadModal } from "@/components/locket/locket-thread-modal";
-import { LocketUploadModal } from "@/components/locket/locket-upload-modal";
+﻿"use client";
+import { useEffect, useRef, useState } from "react";
+import { BookHeart, ChevronDown, Heart, Home, LayoutGrid, MessageCircle, Settings2, Users, X } from "lucide-react";
+import Link from "next/link";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
-import { PairingScreen } from "@/components/pairing/pairing-screen";
-import { db } from "@/lib/firebase";
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { LoginScreen } from "@/components/auth/login-screen";
 import { AvatarImage } from "@/components/shared/avatar-image";
-import type { LocketPostDocument } from "@/types/firestore";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { getLocketFriends } from "@/lib/locket/locket-client-api";
+import { useVerticalGesture } from "@/lib/use-vertical-gesture";
+import { LocketCameraStudio } from "./locket-camera-studio";
+import { LocketFeedView } from "./locket-feed-view";
+import { LocketChatView } from "./locket-chat-view";
+import { LocketFriendsView } from "./locket-friends-view";
+import { LocketAccountView } from "./locket-account-view";
+import { LocketPhotobook } from "./locket-photobook";
 
-type Post = LocketPostDocument & { id: string };
-type Tab = "feed" | "chat";
-const EMOJIS = ["❤️", "🥰", "😂", "😮", "😭", "😘"];
-
-function PostCard({ coupleId, post, userId, focused, onReply }: { coupleId: string; post: Post; userId: string; focused: boolean; onReply: () => void }) {
-  const [reactionsOpen, setReactionsOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
-  const reactionCounts = Object.values(post.reactions || {}).reduce<Record<string, number>>((counts, emoji) => {
-    counts[emoji] = (counts[emoji] || 0) + 1;
-    return counts;
-  }, {});
-
-  async function react(emoji: string) {
-    if (!db) return;
-    await updateDoc(doc(db, "couples", coupleId, "locketPosts", post.id), { [`reactions.${userId}`]: emoji });
-    setReactionsOpen(false);
-  }
-
-  async function deletePost() {
-    if (!db || post.uploaderId !== userId) return;
-    setDeleting(true);
-    setDeleteError("");
-    try {
-      await deleteDoc(doc(db, "couples", coupleId, "locketPosts", post.id));
-    } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Chưa thể xóa ảnh Locket.");
-    } finally {
-      setDeleting(false);
-      setDeleteConfirmOpen(false);
-    }
-  }
-
-  const createdAt = post.createdAt?.toDate?.();
-
-  return (
-    <motion.article id={`locket-${post.id}`} className={`soft-card scroll-m-24 overflow-hidden transition ${focused ? "ring-4 ring-[#df8292] ring-offset-4 ring-offset-[#fff8f0]" : ""}`} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <span className="size-10 overflow-hidden rounded-full bg-blush/30"><AvatarImage src={post.uploaderPhotoUrl} alt={`Avatar ${post.uploaderName}`} /></span>
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{post.uploaderName}</p><p className="text-[10px] text-[#9b857b]">{createdAt ? createdAt.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "Vừa đăng"}</p></div>
-        {post.uploaderId === userId && <button className="grid size-9 shrink-0 place-items-center rounded-full text-[#a36f78] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50" type="button" onClick={() => setDeleteConfirmOpen(true)} disabled={deleting} aria-label="Xóa ảnh Locket" title="Xóa ảnh">{deleting ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}</button>}
-      </div>
-      <div className="aspect-square overflow-hidden bg-[#eadbd0]">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={post.imageUrl} alt={post.caption || "Ảnh Locket"} className="size-full object-cover" /></div>
-      <div className="p-4">
-        {deleteError && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{deleteError}</p>}
-        {post.caption && <p className="font-handwritten text-xl leading-6 text-[#664e46]">{post.caption}</p>}
-        {Object.keys(reactionCounts).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{Object.entries(reactionCounts).map(([emoji, count]) => <span className="rounded-full bg-white/75 px-2.5 py-1 text-sm shadow-sm" key={emoji}>{emoji} <b className="text-xs">{count}</b></span>)}</div>}
-        <div className="relative mt-4 flex gap-2">
-          <button className={`secondary-button flex-1 ${post.reactions?.[userId] ? "bg-blush/30" : ""}`} type="button" onClick={() => setReactionsOpen((current) => !current)}><Heart className="size-4" />{post.reactions?.[userId] || "Cảm xúc"}</button>
-          <button className="secondary-button flex-1" type="button" onClick={onReply}><MessageCircle className="size-4" />Trả lời</button>
-          {reactionsOpen && <motion.div className="absolute bottom-[calc(100%+0.6rem)] left-0 flex gap-1 rounded-full bg-white/95 p-2 shadow-soft" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>{EMOJIS.map((emoji) => <button className="grid size-9 place-items-center rounded-full text-xl transition hover:scale-110 hover:bg-blush/20" type="button" key={emoji} onClick={() => react(emoji)} aria-label={`Thả ${emoji}`}>{emoji}</button>)}</motion.div>}
-        </div>
-      </div>
-      <ConfirmDialog open={deleteConfirmOpen} title="Xóa ảnh Locket?" description="Ảnh này sẽ biến mất với cả hai người và không thể khôi phục." confirmLabel="Xóa ảnh" busy={deleting} onCancel={() => setDeleteConfirmOpen(false)} onConfirm={deletePost} />
-    </motion.article>
-  );
-}
-
-export function LocketScreen({ initialTab = "feed" }: { initialTab?: Tab }) {
+type LocketTab = "studio" | "feed" | "chat" | "friends" | "account" | "photobook";
+export function LocketScreen({ initialTab = "studio" }: { initialTab?: LocketTab }) {
   const { user } = useAuth();
-  const { couple, profile, loading: coupleLoading } = useCoupleSpace();
-  const [tab, setTab] = useState<Tab>(initialTab);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [initialFiles, setInitialFiles] = useState<File[]>([]);
-  const [threadPost, setThreadPost] = useState<Post | null>(null);
-  const [focusedPostId, setFocusedPostId] = useState("");
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState("");
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!db || !user || !couple) return;
-    const postsQuery = query(collection(db, "couples", couple.id, "locketPosts"), orderBy("createdAt", "desc"), limit(100));
-    return onSnapshot(postsQuery, (snapshot) => {
-      setPosts(snapshot.docs.map((post) => ({ id: post.id, ...post.data() }) as Post));
-      setLoading(false);
-      setError("");
-    }, (caught) => {
-      setLoading(false);
-      setError(caught.code === "permission-denied" ? "Firestore Rules chưa mở Locket. Hãy deploy rules mới." : `Không thể tải Locket (${caught.code}).`);
-    });
-  }, [couple, user]);
-
-  useEffect(() => () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-  }, []);
-
-  useEffect(() => {
-    setFocusedPostId(new URLSearchParams(window.location.search).get("post") || "");
-  }, []);
-
-  useEffect(() => {
-    if (!focusedPostId || posts.length === 0) return;
-    document.getElementById(`locket-${focusedPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [focusedPostId, posts]);
-
-  useEffect(() => {
-    if (tab === "chat") stopCamera();
-  }, [tab]);
-
-  function stopCamera() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraActive(false);
-  }
-
-  async function startCamera(mode = facingMode) {
-    setCameraError("");
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError("Trình duyệt này không hỗ trợ mở camera.");
-      return;
-    }
-    try {
-      stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: false });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setCameraActive(true);
-    } catch {
-      setCameraError("Chưa thể mở camera. Hãy cho phép quyền camera trong trình duyệt.");
-    }
-  }
-
-  async function switchCamera() {
-    const nextMode = facingMode === "user" ? "environment" : "user";
-    setFacingMode(nextMode);
-    await startCamera(nextMode);
-  }
-
-  function openUpload(files: File[] = []) {
-    stopCamera();
-    setInitialFiles(files);
-    setUploadOpen(true);
-  }
-
-  function chooseGallery(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/")).slice(0, 6);
-    event.target.value = "";
-    if (files.length > 0) openUpload(files);
-  }
-
-  function capturePhoto() {
-    const video = videoRef.current;
-    if (!video || !cameraActive || video.videoWidth === 0 || video.videoHeight === 0) return;
-    const size = Math.min(video.videoWidth, video.videoHeight);
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    context.drawImage(video, (video.videoWidth - size) / 2, (video.videoHeight - size) / 2, size, size, 0, 0, size, size);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      openUpload([new File([blob], `locket-${Date.now()}.jpg`, { type: "image/jpeg" })]);
-    }, "image/jpeg", 0.94);
-  }
-
+  const { profile, loading } = useCoupleSpace();
+  const [tab, setTab] = useState<LocketTab>(initialTab);
+  const [filter, setFilter] = useState<"all" | "my">("all");
+  const [grid, setGrid] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [friendCount, setFriendCount] = useState<number | null>(null);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => { if (!user) return; let active = true; getLocketFriends().then(friends => { if (active) setFriendCount(friends.length); }).catch(() => {}); return () => { active = false; }; }, [user]);
+  function open(next: LocketTab) { setTab(next); window.scrollTo({ top: 0, behavior: "instant" }); }
+  const cameraGesture = useVerticalGesture(direction => { if (direction === "up") { setGrid(false); open("feed"); } }, tab === "studio" && !editing && !loading && !!user);
   if (!user) return <LoginScreen />;
-  if (coupleLoading) return <main className="grid min-h-dvh place-items-center"><Heart className="size-9 animate-pulse fill-blush text-blush" /></main>;
-  if (!couple) return <PairingScreen user={user} />;
-
-  return (
-    <main className="min-h-dvh px-4 pb-32 pt-6 sm:px-6 sm:pt-9">
-      <div className="app-frame">
-        <header className="text-center"><p className="font-handwritten text-xl text-[#a56f78] sm:text-2xl">Ngay lúc này, chỉ hai mình</p><h1 className="flex items-center justify-center gap-2 font-display text-3xl font-extrabold sm:text-4xl"><Camera className="size-7 text-[#d17485]" />Locket đôi</h1></header>
-
-        <div className="soft-card mt-6 grid grid-cols-2 gap-1 p-1.5">
-          <button className={`flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-bold transition ${tab === "feed" ? "bg-blush/55 shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setTab("feed")}><Camera className="size-4" />Camera</button>
-          <button className={`flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-bold transition ${tab === "chat" ? "bg-blush/55 shadow-sm" : "text-[#8b756a]"}`} type="button" onClick={() => setTab("chat")}><MessagesSquare className="size-4" />Nhắn tin</button>
-        </div>
-
-        {tab === "chat" ? <div className="mt-5"><LocketChat coupleId={couple.id} user={user} profile={profile} /></div> : <>
-          <section className="mt-5 overflow-hidden rounded-[2rem] bg-[#211d1c] p-2 shadow-[0_18px_45px_rgba(61,45,39,.24)]">
-            <div className="relative aspect-square overflow-hidden rounded-[1.55rem] bg-[#302a28]">
-              <video ref={videoRef} className={`size-full object-cover ${facingMode === "user" ? "-scale-x-100" : ""}`} muted playsInline aria-label="Hình ảnh camera trực tiếp" />
-              {!cameraActive && <div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_center,#4a3e3a,#211d1c)] px-8 text-center text-white"><span className="grid size-20 place-items-center rounded-full border border-white/20 bg-white/10"><Camera className="size-9" /></span><h2 className="mt-5 font-display text-2xl font-bold">Chụp khoảnh khắc ngay lúc này</h2><p className="mt-2 text-sm leading-6 text-white/65">Mở camera để chụp ảnh vuông giống Locket.</p></div>}
-              {cameraActive && <button className="absolute right-3 top-3 grid size-11 place-items-center rounded-full bg-black/45 text-white backdrop-blur-md" type="button" onClick={switchCamera} aria-label="Đổi camera trước sau"><SwitchCamera className="size-5" /></button>}
-            </div>
-          </section>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <button className="primary-button min-h-14" type="button" onClick={cameraActive ? capturePhoto : () => startCamera()}><Camera className="size-5" />{cameraActive ? "Chụp ảnh" : "Mở camera"}</button>
-            <button className="secondary-button min-h-14" type="button" onClick={() => galleryInputRef.current?.click()}><Upload className="size-5" />Tải ảnh lên</button>
-          </div>
-          <input ref={galleryInputRef} className="hidden" type="file" accept="image/*" multiple onChange={chooseGallery} />
-          {cameraError && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-center text-sm text-red-700">{cameraError}</p>}
-
-          <div className="mt-8 flex flex-col items-center text-center"><ChevronDown className="size-5 animate-bounce text-[#c87887]" /><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9a7f75]">Kéo lên xem ảnh đã đăng</p></div>
-          <div className="mt-4 flex items-end justify-between gap-3"><div><p className="font-handwritten text-xl text-[#a56f78]">Khoảnh khắc của hai mình</p><h2 className="font-display text-2xl font-extrabold">Ảnh đã đăng</h2></div><span className="rounded-full bg-blush/25 px-3 py-1 text-xs font-bold text-[#9b6570]">{posts.length} ảnh</span></div>
-
-          {loading ? (
-            <div className="py-24 text-center"><Heart className="mx-auto size-10 animate-pulse fill-blush text-blush" /><p className="mt-3 font-handwritten text-xl text-[#a56f78]">Đang lấy ảnh mới nhất...</p></div>
-          ) : error ? (
-            <div className="soft-card mt-6 p-8 text-center"><p className="text-sm text-red-700">{error}</p><button className="secondary-button mt-4" type="button" onClick={() => window.location.reload()}><RefreshCw className="size-4" />Thử lại</button></div>
-          ) : posts.length === 0 ? (
-            <div className="soft-card mt-6 flex min-h-72 flex-col items-center justify-center px-7 text-center"><ImagePlus className="size-12 text-[#d48a96]" /><h2 className="mt-4 font-display text-2xl font-bold">Chưa có ảnh nào</h2><p className="mt-2 max-w-sm text-sm leading-6 text-[#806e65]">Chụp ảnh hoặc tải ảnh từ máy để gửi Locket đầu tiên.</p></div>
-          ) : (
-            <div className="mt-6 space-y-6">{posts.map((post) => <PostCard coupleId={couple.id} key={post.id} post={post} userId={user.uid} focused={focusedPostId === post.id} onReply={() => setThreadPost(post)} />)}</div>
-          )}
-        </>}
-      </div>
-
-      <BottomNav />
-      <LocketUploadModal coupleId={couple.id} open={uploadOpen} user={user} profile={profile} initialFiles={initialFiles} onClose={() => { setUploadOpen(false); setInitialFiles([]); }} />
-      <LocketThreadModal coupleId={couple.id} post={threadPost} user={user} profile={profile} onClose={() => setThreadPost(null)} />
-    </main>
-  );
+  if (loading) return <main className="grid min-h-dvh place-items-center bg-black"><Heart className="size-9 animate-pulse text-[#ffca28]" /></main>;
+  const account = profile?.locketAccount;
+  const secondary = tab === "friends" || tab === "account" || tab === "chat";
+  return <main className={`locket-page locket-ios locket-reference-shell ${editing ? "" : "locket-with-site-nav"}`}>
+    <div className="locket-reference-app">
+      {!editing && <header className="locket-reference-header">
+        <Link href="/" aria-label="Về trang chủ Love Days" className="locket-reference-icon"><Heart className="size-4" /></Link>
+        {tab === "studio" ? <button type="button" onClick={() => open("friends")} className="locket-reference-pill"><Users className="size-4" />{friendCount === null ? "Bạn bè" : `${friendCount} người bạn`}</button> : <label className="locket-reference-pill relative"><span className="sr-only">Lọc khoảnh khắc</span><select aria-label="Lọc khoảnh khắc" value={filter} onChange={e => setFilter(e.target.value as "all" | "my")} className="appearance-none bg-transparent pr-5 text-center text-xs font-bold text-white outline-none"><option className="bg-[#292929]" value="all">Mọi người</option><option className="bg-[#292929]" value="my">Của mình</option></select><ChevronDown className="pointer-events-none absolute right-3 size-3 text-white/50" /></label>}
+        <button type="button" onClick={() => open("account")} aria-label="Tài khoản Locket" className="locket-reference-icon overflow-hidden">{account?.avatarUrl ? <AvatarImage src={account.avatarUrl} alt="Tài khoản" /> : <Settings2 className="size-4" />}</button>
+      </header>}
+      <section className={`locket-reference-content ${tab === "studio" ? "locket-reference-camera" : ""} ${editing ? "locket-editing-content" : ""} ${tab === "feed" ? "locket-history-content" : ""}`} aria-label={tab === "studio" ? "Máy ảnh" : "Khoảnh khắc"}>
+        {tab === "studio" && <div {...cameraGesture} className="locket-camera-gesture flex h-full flex-col" onTouchStart={e => { if ((e.target as HTMLElement).closest("button,input,textarea,select,label")) { touch.current = null; return; } touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }} onTouchEnd={e => { const start = touch.current; touch.current = null; if (!start || editing) return; const dy = e.changedTouches[0].clientY - start.y; const dx = e.changedTouches[0].clientX - start.x; if (dy < -65 && Math.abs(dy) > Math.abs(dx)) open("feed"); }}>
+          <LocketCameraStudio compact onPreviewChange={setEditing} onPostSuccess={() => open("feed")} />
+          {!editing && <button type="button" onClick={() => { setGrid(false); open("feed"); }} className="locket-reference-history">Lịch sử<ChevronDown className="size-4" /></button>}
+        </div>}
+        {tab === "feed" && <LocketFeedView filter={filter} grid={grid} onSelectMoment={() => setGrid(false)} onOpenCamera={() => open("studio")} />}
+        {tab === "photobook" && <LocketPhotobook filter={filter} />}
+      </section>
+      {!editing && <nav className="locket-reference-dock" aria-label="Điều hướng Locket">
+        <button type="button" title="Photobook" aria-label="Photobook theo tháng" aria-current={tab === "photobook" ? "page" : undefined} onClick={() => open("photobook")}><BookHeart className="size-4" /></button>
+        <button type="button" aria-label="Lưới lịch sử" aria-pressed={tab === "feed" && grid} onClick={() => { setGrid(true); open("feed"); }}><LayoutGrid className="size-4" /></button>
+        <button type="button" aria-label="Máy ảnh" aria-current={tab === "studio" ? "page" : undefined} onClick={() => open("studio")}>{tab === "feed" ? <span className="locket-mini-shutter" /> : <Home className="size-5 fill-current" />}</button>
+        <button type="button" aria-label="Tin nhắn" aria-current={tab === "chat" ? "page" : undefined} onClick={() => open("chat")}><MessageCircle className="size-4 fill-current" /></button>
+      </nav>}
+      {secondary && <div className="locket-reference-sheet" role="dialog" aria-modal="true" aria-label={tab === "friends" ? "Bạn bè" : tab === "account" ? "Tài khoản" : "Tin nhắn"}><div className="mx-auto mb-4 h-1 w-8 rounded-full bg-white/20" /><button type="button" onClick={() => open("studio")} aria-label="Đóng" className="locket-reference-icon ml-auto mb-4"><X className="size-4" /></button>{tab === "friends" && <LocketFriendsView />}{tab === "account" && <LocketAccountView />}{tab === "chat" && <LocketChatView />}</div>}
+    </div>
+    {!editing && <BottomNav />}
+  </main>;
 }

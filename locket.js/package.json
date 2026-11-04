@@ -1,0 +1,35 @@
+{
+  "name": "locket.js",
+  "version": "0.0.3",
+  "description": "Unofficial Node.js SDK client for Locket Camera",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "node --test tests/*.js",
+    "lint": "node --check index.js && node --check lib/**/*.js"
+  },
+  "keywords": [
+    "locket",
+    "locket-camera",
+    "locket-api",
+    "locketjs",
+    "ios-client",
+    "reverse-engineered"
+  ],
+  "author": "Hmkk69",
+  "contributors": [
+    "huuhieu17 (https://github.com/huuhieu17)"
+  ],
+  "homepage": "https://github.com/hmkk69/locket.js",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.33.5",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "allowScripts": {
+    "sharp@0.33.5": true
+  }
+}

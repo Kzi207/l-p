@@ -1,5 +1,5 @@
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { getAdminAuth } from "@/lib/firebaseAdmin";
+import { getIdTokenVerifier } from "@/lib/firebaseAdmin";
 
 export class ApiAuthError extends Error {
   constructor(message: string, public readonly status = 401) {
@@ -14,7 +14,7 @@ export async function verifyAuthToken(request: Request): Promise<DecodedIdToken>
   if (!match) throw new ApiAuthError("Thiếu Firebase ID token.");
 
   try {
-    return await getAdminAuth().verifyIdToken(match[1]);
+    return await getIdTokenVerifier().verifyIdToken(match[1]);
   } catch (caught) {
     console.error("verifyAuthToken failed:", caught instanceof Error ? caught.message : caught);
     throw new ApiAuthError("Firebase ID token không hợp lệ hoặc đã hết hạn.");

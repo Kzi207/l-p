@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -109,6 +109,136 @@ video { display: block; }
 }
 
 @layer components {
+  .locket-reference-shell { --locket-text: #73544b; --locket-muted: #a18277; --locket-accent: #c87890; }
+  .locket-text { color: var(--locket-text); }
+  .locket-muted { color: var(--locket-muted); }
+  .locket-frame-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 20px; }
+  .locket-frame-picker > button { display: flex; flex-direction: column; gap: 5px; align-items: center; padding: 12px; border: 1px solid #ead7d2; border-radius: 20px; background: #fff9f5; color: var(--locket-text); }
+  .locket-frame-picker > button[aria-pressed="true"] { border-color: #cf8197; background: #fce7ed; box-shadow: 0 0 0 2px #d68da022; }
+  .locket-frame-picker > button:disabled { opacity: .35; }
+  .locket-frame-picker small { color: var(--locket-muted); font-size: 10px; }
+  .locket-frame-picker b { font-size: 12px; }
+  .locket-frame-sample { position: relative; display: block; width: 80px; height: 80px; overflow: hidden; border-radius: 8px; }
+  .locket-frame-sample > span { display: block; width: 100%; height: 100%; border-radius: 4px; background: linear-gradient(150deg, #e4bfce, #a7bdac 65%, #f4ddab); }
+  .locket-send-photo.locket-frame-polaroid, .locket-frame-sample.locket-frame-polaroid { padding: 4% 4% 12%; background: #fffaf2; }
+  .locket-send-photo.locket-frame-hearts, .locket-frame-sample.locket-frame-hearts { padding: 5%; background: #f7dce6; }
+  .locket-frame-hearts::before, .locket-frame-hearts::after { position: absolute; right: 0; left: 0; color: #ce7a94; font-size: clamp(10px, 2vw, 16px); text-align: center; letter-spacing: 10px; line-height: 1; content: "♥ ♥ ♥ ♥ ♥"; pointer-events: none; }
+  .locket-frame-hearts::before { top: 1%; } .locket-frame-hearts::after { bottom: 1%; }
+  .locket-send-photo.locket-frame-film, .locket-frame-sample.locket-frame-film { padding: 9% 5%; background: #29221f; }
+  .locket-frame-film::before, .locket-frame-film::after { position: absolute; right: 2%; left: 2%; height: 4%; background: repeating-linear-gradient(90deg, #f8e4b9 0 4%, transparent 4% 8%); content: ""; pointer-events: none; }
+  .locket-frame-film::before { top: 2%; } .locket-frame-film::after { bottom: 2%; }
+  .locket-send-photo.locket-frame-neon, .locket-frame-sample.locket-frame-neon { padding: 3%; background: #d881a0; }
+  .locket-send-photo.locket-frame-rounded, .locket-frame-sample.locket-frame-rounded { padding: 5%; background: #f7dce6; }
+  .locket-send-photo.locket-frame-rounded > img, .locket-frame-sample.locket-frame-rounded > span { border-radius: 10%; }
+  .locket-photobook { padding: 4px 8px 24px; color: var(--locket-muted); }
+  .locket-photobook > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 4px 24px; }
+  .locket-photobook > header p { margin-bottom: 3px; font-size: 11px; }
+  .locket-photobook h2 { color: var(--locket-text); font-family: var(--font-baloo), sans-serif; font-size: 26px; font-weight: 700; }
+  .locket-book-covers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; }
+  .locket-book-cover { padding: 12px 12px 16px 18px; border: 1px solid #fff; border-left: 7px solid #c68e9e; border-radius: 5px 20px 20px 5px; background: linear-gradient(130deg, #fffaf4, #efd7de); box-shadow: 3px 7px 0 #e5c9d0, 0 12px 25px #9c657215; text-align: left; transition: transform .2s; }
+  .locket-book-cover:hover { transform: translateY(-3px); }
+  .locket-book-cover > div { display: grid; aspect-ratio: 1; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 3px; overflow: hidden; border-radius: 10px; background: #efdfdb; }
+  .locket-book-cover > div > span { display: grid; min-height: 0; overflow: hidden; place-items: center; }
+  .locket-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .locket-book-cover h3 { margin: 12px 0 4px; color: var(--locket-text); font-size: 13px; font-weight: 700; }
+  .locket-book-cover p { font-size: 10px; }
+  .locket-book-spread { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); min-height: 240px; overflow: hidden; border: 1px solid white; border-radius: 12px; background: linear-gradient(90deg, #fffaf3 47%, #e7d8cc 50%, #fffaf3 53%); padding: 18px 10px; box-shadow: 0 14px 30px #9c657224; cursor: grab; }
+  .locket-book-spread figure { min-width: 0; padding: 0 10px; }
+  .locket-book-spread figure > img { width: 100%; aspect-ratio: 1; border: 5px solid white; object-fit: cover; box-shadow: 0 3px 10px #7d594119; pointer-events: none; }
+  .locket-book-spread figcaption { overflow-wrap: anywhere; margin-top: 12px; color: var(--locket-text); text-align: center; font-family: var(--font-caveat), cursive; font-size: 18px; }
+  .locket-book-pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 22px; font-size: 11px; }
+  .locket-book-pagination button { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid white; border-radius: 50%; background: #fff8f3; color: var(--locket-accent); }
+  .locket-book-pagination button:disabled { opacity: .3; }
+  .mouse-drag-scrolling, .mouse-drag-scrolling * { cursor: grabbing !important; user-select: none !important; }
+  .locket-with-site-nav { padding-bottom: 104px; }
+  .locket-with-site-nav .locket-reference-app { height: calc(100dvh - 104px); min-height: 380px; }
+  .locket-with-site-nav .locket-reference-viewfinder { width: min(100%, max(140px, calc(100dvh - 444px))); }
+  .locket-with-site-nav .locket-reference-photo { width: min(100%, max(180px, calc(100dvh - 330px))); }
+  .locket-reference-shell { min-height: 100dvh; background: linear-gradient(150deg, #fff9f2, #f9e7e9 65%, #f5eadd); color: #654a42; }
+  .locket-reference-app { --locket-accent: #cf7086; position: relative; display: flex; flex-direction: column; width: min(100%, 460px); height: 100dvh; min-height: 480px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 12px 0; }
+  .locket-reference-header { z-index: 10; display: flex; height: 48px; flex-shrink: 0; align-items: center; justify-content: space-between; padding: 0 6px; }
+  .locket-reference-icon { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid #fff; border-radius: 50%; background: #ffffffb8; color: #a07170; box-shadow: 0 4px 12px #8c5b4410; }
+  .locket-reference-pill { display: flex; min-height: 38px; align-items: center; justify-content: center; gap: 6px; border: 1px solid #fff; border-radius: 999px; background: #ffffffb8; padding: 0 15px; color: #926267; font-size: 12px; font-weight: 700; }
+  .locket-reference-pill select { color: #926267; }
+  .locket-reference-pill option { color: #654a42; background: #fff8f2; }
+  .locket-reference-pill svg { color: #b5898d; }
+  .locket-reference-content { display: flex; flex: 1; min-height: 0; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; padding: 10px 0 0; }
+  .locket-reference-camera { overflow: hidden; }
+  .locket-reference-studio { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 10px; }
+  .locket-reference-studio.has-preview { overflow-y: auto; padding-bottom: 12px; }
+  .locket-reference-viewfinder { position: relative; width: min(100%, max(180px, calc(100dvh - 340px))); aspect-ratio: 1; flex-shrink: 0; overflow: hidden; margin: 0 auto; border: 4px solid #ffffffa8; border-radius: 40px; background: #342e2b; box-shadow: 0 12px 30px #8c5b441a; }
+  .locket-reference-viewfinder > div { border-radius: inherit; }
+  .locket-reference-shutterbar { display: grid; grid-template-columns: 1fr 90px 1fr; width: 100%; align-items: center; justify-items: center; margin-top: auto; padding: 12px 25px 0; }
+  .locket-reference-shutter { display: grid; width: 76px; height: 76px; flex-shrink: 0; place-items: center; border: 3px solid #d88396; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 4px #fcebef, 0 6px 16px #cf708625; transition: transform .15s; }
+  .locket-reference-shutter:active { transform: scale(.93); }
+  .locket-reference-gallery { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid #fff; border-radius: 12px; background: #fff8f4; color: #b47b88; box-shadow: 0 4px 12px #8c5b4410; }
+  .locket-reference-flip { display: grid; width: 44px; height: 44px; place-items: center; color: #ad7c80; }
+  .locket-reference-history { display: flex; min-height: 40px; flex-shrink: 0; align-items: center; justify-content: center; gap: 7px; margin: 10px auto 0; padding: 0 18px; color: #a16d79; font-size: 12px; font-weight: 700; }
+  .locket-reference-dock { position: relative; z-index: 30; display: flex; width: 224px; height: 46px; flex-shrink: 0; align-items: center; justify-content: space-around; margin: 6px auto max(10px, env(safe-area-inset-bottom)); border: 1px solid #fff; border-radius: 999px; background: #fffcf5e8; padding: 5px; box-shadow: 0 8px 24px #9c65721a; backdrop-filter: blur(20px); }
+  .locket-reference-dock button { display: grid; width: 54px; height: 38px; place-items: center; border-radius: 99px; color: #b69b94; }
+  .locket-reference-dock button[aria-current="page"], .locket-reference-dock button[aria-pressed="true"] { background: #f7dce3; color: #bc687c; }
+  .locket-mini-shutter { width: 30px; height: 30px; border: 2px solid #d88396; border-radius: 50%; background: white; box-shadow: inset 0 0 0 3px #fcebef; }
+  .locket-reference-feed { position: relative; display: flex; min-height: 100%; flex-direction: column; gap: 6px; padding: 0; }
+  .locket-reference-feed.is-grid { padding: 8px 0 20px; }
+  .locket-history-content { flex: 0 1 auto; margin-top: auto; }
+  .locket-history-content .locket-reference-feed { min-height: 0; }
+  .locket-reference-photo { position: relative; display: flex; width: min(100%, max(180px, calc(100dvh - 282px))); aspect-ratio: 1; overflow: hidden; margin: 0 auto; border-radius: 38px; background: #edddd5; box-shadow: 0 12px 30px #8c5b441a; cursor: grab; user-select: none; }
+  .locket-reference-photo:active, .locket-camera-gesture:active { cursor: grabbing; }
+  .locket-reference-photo img { pointer-events: none; }
+  .locket-reference-moment { order: 1; flex-shrink: 0; animation: locket-photo-in .24s ease-out both; }
+  .locket-reference-moment > div:last-child { color: #ac8c80; }
+  .locket-reference-moment > div:last-child span.font-semibold { color: #73544b; }
+  .locket-reference-moment > div:last-child button { color: #b68d86; }
+  .locket-reference-composer { position: relative; z-index: 1; order: 3; display: flex; width: min(calc(100% - 24px), 400px); min-height: 44px; flex-shrink: 0; align-items: center; gap: 3px; margin: 8px auto 4px; border: 1px solid white; border-radius: 999px; background: #fffcf7ed; padding: 5px 12px 5px 18px; box-shadow: 0 6px 20px #9c657214; backdrop-filter: blur(18px); }
+  .locket-reference-composer input { color: #73544b; }
+  .locket-reference-composer input::placeholder { color: #b29489; }
+  .locket-reference-composer button { color: #c57186; }
+  .locket-reference-load { order: 4; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px auto 0; border-radius: 99px; background: #fff9f3; padding: 10px 18px; color: #a67b78; font-size: 12px; }
+  .locket-reference-sheet { position: fixed; z-index: 40; inset: max(20px, env(safe-area-inset-top)) 0 0; width: min(100%, 460px); margin: 0 auto; overflow-y: auto; border: 1px solid white; border-radius: 32px 32px 0 0; background: #fff7f0; padding: 12px 18px 40px; box-shadow: 0 -30px 100px #8c5b4430; }
+  .locket-editing-content { overflow-y: auto; padding-top: 0; }
+  .locket-send-preview { display: flex; min-height: 100%; flex-direction: column; gap: 12px; padding-bottom: max(22px, env(safe-area-inset-bottom)); }
+  .locket-send-heading { display: grid; grid-template-columns: 44px 1fr 44px; min-height: 56px; align-items: center; padding: 0 8px; }
+  .locket-send-heading h2 { text-align: center; color: #a77e74; font-size: 18px; font-weight: 700; }
+  .locket-send-photo { position: relative; width: min(100%, max(200px, calc(100dvh - 350px))); aspect-ratio: 1; flex-shrink: 0; overflow: hidden; margin: 0 auto; border: 3px solid #ffffffa0; border-radius: 40px; background: #eadbd4; box-shadow: 0 12px 30px #8c5b441a; }
+  .locket-send-caption { position: absolute; right: 14px; bottom: 16px; left: 14px; display: flex; justify-content: center; }
+  .locket-send-caption :is(input, button) { max-width: 100%; min-height: 40px; border: none; border-radius: 99px; padding: 9px 18px; text-align: center; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px #0002; }
+  .locket-send-caption input { width: 100%; outline: 2px solid #ffffff80; }
+  .locket-send-caption input::placeholder { color: #fff9; }
+  .locket-send-styles { display: flex; min-height: 20px; align-items: center; justify-content: center; gap: 10px; }
+  .locket-send-styles button { width: 10px; height: 10px; border-radius: 50%; opacity: .5; transition: transform .15s, opacity .15s; }
+  .locket-send-styles button[aria-pressed="true"] { transform: scale(1.3); opacity: 1; outline: 2px solid #c48b9c; outline-offset: 3px; }
+  .locket-send-actions { display: grid; grid-template-columns: 1fr 90px 1fr; align-items: center; justify-items: center; margin: 3px 0 10px; }
+  .locket-send-actions > button { display: flex; width: 52px; height: 52px; align-items: center; justify-content: center; color: #b77a88; }
+  .locket-send-actions > button:disabled { opacity: .45; }
+  .locket-send-actions > .locket-send-submit { width: 80px; height: 80px; border: 1px solid #fff; border-radius: 50%; background: linear-gradient(135deg, #e4a0b0, #c76b83); color: #fff; box-shadow: 0 10px 24px #bc667c35; }
+  .locket-send-aa { position: relative; border: 2px solid #c993a0; border-radius: 50%; }
+  .locket-send-aa span { font-size: 20px; font-weight: 700; }
+  .locket-send-aa svg { position: absolute; top: -5px; right: -5px; background: #fff4f0; }
+  .locket-send-recipients { display: flex; flex-shrink: 0; gap: 18px; overflow-x: auto; padding: 8px 18px; }
+  .locket-send-recipients > button { display: flex; width: 68px; flex-shrink: 0; flex-direction: column; align-items: center; gap: 7px; color: #b59285; }
+  .locket-send-recipients > button > span { position: relative; display: grid; width: 52px; height: 52px; place-items: center; border: 2px solid #ead9d0; border-radius: 50%; background: #ffffff90; padding: 3px; }
+  .locket-send-recipients > button > span > img { border-radius: 50%; }
+  .locket-send-recipients .selected { border-color: #d1879b; box-shadow: 0 0 0 3px #e7adbd33; }
+  .locket-send-recipients button[aria-pressed="true"] { color: #bc6e83; }
+  .locket-send-recipients b { max-width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; }
+  .locket-send-recipients i { position: absolute; right: -1px; bottom: -1px; display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; background: #c87890; color: #fff; }
+  .locket-caption-backdrop { position: fixed; z-index: 60; inset: 0; display: flex; align-items: flex-end; justify-content: center; background: #5b3e3c55; backdrop-filter: blur(3px); }
+  .locket-caption-sheet { width: min(100%, 460px); max-height: min(76dvh, 700px); overflow-y: auto; overscroll-behavior: contain; border: 1px solid #fff; border-radius: 36px 36px 0 0; background: linear-gradient(145deg, #fffaf5, #fbecef); padding: 14px 20px max(28px, env(safe-area-inset-bottom)); box-shadow: 0 -20px 60px #69434926; animation: locket-caption-in .22s ease-out both; }
+  .locket-caption-handle { width: 36px; height: 4px; margin: 0 auto 16px; border-radius: 99px; background: #c49b9580; }
+  .locket-caption-sheet header { position: relative; margin-bottom: 22px; text-align: center; }
+  .locket-caption-sheet h3 { color: #865d58; font-size: 20px; font-weight: 700; }
+  .locket-caption-sheet header button { position: absolute; top: 0; right: 0; display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: #f4dbe2; color: #b1677e; }
+  .locket-caption-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+  .locket-caption-tools button { display: flex; min-height: 44px; align-items: center; gap: 7px; border: 1px solid #fff; border-radius: 99px; background: #fff; padding: 8px 15px; color: #a97879; font-size: 13px; font-weight: 700; }
+  .locket-caption-tools button[aria-pressed="true"] { background: #f6dce4; color: #a75e75; }
+  @keyframes locket-caption-in { from { transform: translateY(25%); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .locket-caption-sheet { animation: none; } }
+  @keyframes locket-photo-in { from { opacity: .5; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { .locket-reference-moment { animation: none; } }
+  .locket-icon-button {
+    @apply grid size-10 shrink-0 place-items-center rounded-full border border-white/90 bg-white/75 text-[#957368] shadow-sm transition hover:bg-white active:scale-95;
+  }
+
   .app-frame {
     width: min(100%, var(--app-width));
     @apply mx-auto;
@@ -342,3 +472,4 @@ body.locket-keyboard-open .locket-chat-composer {
   border-radius: 0;
   box-shadow: 0 -10px 30px rgba(100, 70, 55, 0.14);
 }
+

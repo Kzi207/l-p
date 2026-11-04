@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, BellRing } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -10,6 +11,7 @@ import { registerForPushNotifications } from "@/lib/fcm";
 type PushStatus = "idle" | "loading" | "granted" | "denied" | "unsupported";
 
 export function GlobalNotifications() {
+  const pathname = usePathname();
   const { user } = useAuth();
   const { couple, loading } = useCoupleSpace();
   const [open, setOpen] = useState(false);
@@ -24,6 +26,7 @@ export function GlobalNotifications() {
     return "idle";
   });
   const [pushError, setPushError] = useState("");
+  useEffect(() => { if (pathname !== "/") setOpen(false); }, [pathname]);
 
   useEffect(() => {
     if (!user) return;
@@ -100,7 +103,7 @@ export function GlobalNotifications() {
     }
   }
 
-  if (!user || !couple || loading) return null;
+  if (pathname !== "/" || !user || !couple || loading) return null;
 
   return (
     <>

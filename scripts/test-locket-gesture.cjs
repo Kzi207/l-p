@@ -1,0 +1,33 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const ts = require("typescript");
+const { test } = require("node:test");
+
+test("mouse drag and wheel navigate vertically without hijacking inputs or skipping on momentum", () => {
+  const effects = [];
+  const events = {};
+  const directions = [];
+  let now = 1000;
+  const node = { clientHeight: 500, addEventListener: (name, handler) => { events[name] = handler; }, removeEventListener: () => {}, setPointerCapture: () => {} };
+  const module = { exports: {} };
+  const code = ts.transpileModule(fs.readFileSync("src/lib/use-vertical-gesture.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  vm.runInNewContext(code, { module, exports: module.exports, Date: { now: () => now }, require: () => ({ useRef: value => ({ current: value }), useEffect: fn => effects.push(fn) }) });
+  const hook = module.exports.useVerticalGesture(direction => directions.push(direction));
+  hook.ref.current = node;
+  effects[0]();
+  const target = { closest: () => null };
+  const pointer = y => ({ pointerType: "mouse", button: 0, pointerId: 1, clientX: 50, clientY: y, target, currentTarget: node, preventDefault: () => {} });
+  hook.onPointerDown(pointer(200)); hook.onPointerUp(pointer(90));
+  hook.onPointerDown(pointer(90)); hook.onPointerUp(pointer(200));
+  assert.deepEqual(directions, ["up", "down"]);
+  const wheel = (delta, eventTarget = target) => events.wheel({ deltaX: 0, deltaY: delta, deltaMode: 0, target: eventTarget, preventDefault: () => {} });
+  wheel(30); wheel(30); wheel(90);
+  assert.deepEqual(directions, ["up", "down", "up"]);
+  now += 700; wheel(-70);
+  assert.equal(directions.at(-1), "down");
+  now += 700; wheel(100, { closest: () => ({ tagName: "INPUT" }) });
+  assert.equal(directions.length, 4);
+  hook.onPointerDown(pointer(200)); hook.onPointerCancel(); hook.onPointerUp(pointer(90));
+  assert.equal(directions.length, 4);
+});

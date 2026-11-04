@@ -21,7 +21,7 @@ const nextConfig = {
     ];
   },
   experimental: {
-    serverComponentsExternalPackages: ["youtubei.js", "ffmpeg-static"],
+    serverComponentsExternalPackages: ["youtubei.js", "ffmpeg-static", "locket.js"],
   },
   // Chỉ dùng distDir custom khi dev local trên Windows (set CUSTOM_DIST_DIR=1 trong .env.development.local)
   ...(process.env.CUSTOM_DIST_DIR === "1" ? { distDir: ".next-build" } : {}),

@@ -19,7 +19,21 @@ export interface PhotoDocument {
   uploaderName: string;
 }
 
+export interface LocketAccountInfo {
+  email: string;
+  password?: string;
+  uid: string;
+  displayName?: string;
+  avatarUrl?: string;
+  linkedAt: number;
+  refreshToken?: string;
+  idToken?: string;
+  expiresAt?: number;
+  device?: Record<string, unknown>;
+}
+
 export interface UserDocument {
+  locketAccount?: LocketAccountInfo;
   publicUid?: string;
   displayName: string;
   email: string;

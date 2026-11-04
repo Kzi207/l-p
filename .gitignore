@@ -12,6 +12,7 @@
 /build
 
 # local configuration
+.env
 .env*.local
 .firebase/
 firebase-debug.log
