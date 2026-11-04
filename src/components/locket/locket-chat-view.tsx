@@ -3,15 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
-  Heart,
   LoaderCircle,
   MessageCircle,
   RefreshCw,
   Send,
   Trash2,
-  UserCheck,
   Smile,
-  CheckCheck,
 } from "lucide-react";
 import {
   deleteLocketChatMessage,

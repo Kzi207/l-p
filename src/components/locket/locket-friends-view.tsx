@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LoaderCircle, RefreshCw, UserPlus, Users, Search, Check } from "lucide-react";
+import { LoaderCircle, RefreshCw, UserPlus, Users, Search } from "lucide-react";
 import { getLocketFriends } from "@/lib/locket/locket-client-api";
 import { AvatarImage } from "@/components/shared/avatar-image";
 import { auth } from "@/lib/firebase";

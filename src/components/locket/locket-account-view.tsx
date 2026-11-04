@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, CheckCircle2, KeyRound, LoaderCircle, Mail, RefreshCw, ShieldCheck, Unlink, User } from "lucide-react";
-import { checkLocketStatus, unlinkLocketAccount } from "@/lib/locket/locket-client-api";
+import { Camera, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck, Unlink } from "lucide-react";
+import { unlinkLocketAccount } from "@/lib/locket/locket-client-api";
 import { LocketLinkModal } from "@/components/locket/locket-link-modal";
 import { AvatarImage } from "@/components/shared/avatar-image";
 import { useCoupleSpace } from "@/components/providers/couple-provider";
