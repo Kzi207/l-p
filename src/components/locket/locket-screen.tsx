@@ -33,7 +33,7 @@ export function LocketScreen({ initialTab = "studio" }: { initialTab?: LocketTab
   if (loading) return <main className="grid min-h-dvh place-items-center bg-black"><Heart className="size-9 animate-pulse text-[#ffca28]" /></main>;
   const account = profile?.locketAccount;
   const secondary = tab === "friends" || tab === "account" || tab === "chat";
-  return <main className={`locket-page locket-ios locket-reference-shell ${editing ? "" : "locket-with-site-nav"}`}>
+  return <main data-mouse-drag-scroll={tab === "feed" && !grid ? "off" : undefined} className={`locket-page locket-ios locket-reference-shell ${editing ? "" : "locket-with-site-nav"} ${tab === "feed" && !grid ? "locket-reader" : ""}`}>
     <div className="locket-reference-app">
       {!editing && <header className="locket-reference-header">
         <Link href="/" aria-label="Về trang chủ Love Days" className="locket-reference-icon"><Heart className="size-4" /></Link>

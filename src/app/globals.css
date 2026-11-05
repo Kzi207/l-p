@@ -200,6 +200,18 @@ video { display: block; }
   .locket-reference-feed.is-grid { padding: 8px 0 20px; }
   .locket-history-content { flex: 0 1 auto; margin-top: auto; }
   .locket-history-content .locket-reference-feed { min-height: 0; }
+  body:has(.locket-reader) { overflow: hidden; overscroll-behavior: none; }
+  .locket-reader { position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none; }
+  .locket-reader .locket-reference-app { min-height: 0; }
+  .locket-reader .locket-reference-header, .locket-reader .locket-reference-dock { flex-shrink: 0; }
+  .locket-reader .locket-history-content { flex: 1; margin-top: 0; overflow: hidden; }
+  .locket-reader .locket-reference-feed { height: 100%; min-height: 0; overflow: hidden; }
+  .locket-reader .locket-reference-moment { display: flex; min-height: 0; flex: 1; flex-direction: column; justify-content: flex-end; container-type: size; }
+  .locket-reader .locket-reference-moment .locket-reference-photo { width: min(100%, max(0px, calc(100cqh - 42px))); flex-shrink: 0; touch-action: none !important; }
+  .locket-reader .locket-reference-moment > div:last-child { height: 34px; min-height: 34px; flex-shrink: 0; margin-top: 8px; }
+  .locket-reader .locket-reference-composer { flex-shrink: 0; margin: 6px auto 4px; }
+  .locket-reader .locket-reference-feed > p { position: absolute; z-index: 5; top: 0; right: 0; left: 0; border-radius: 12px; background: #fff8f2ed; padding: 10px; }
+  .locket-reader .locket-reference-load { position: absolute; z-index: 5; top: 8px; left: 50%; transform: translateX(-50%); margin: 0; }
   .locket-reference-photo { position: relative; display: flex; width: min(100%, max(180px, calc(100dvh - 282px))); aspect-ratio: 1; overflow: hidden; margin: 0 auto; border-radius: 38px; background: #edddd5; box-shadow: 0 12px 30px #8c5b441a; cursor: grab; user-select: none; }
   .locket-reference-photo:active, .locket-camera-gesture:active { cursor: grabbing; }
   .locket-reference-photo img { pointer-events: none; }

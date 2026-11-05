@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { browserLocalPersistence, browserPopupRedirectResolver, getAuth, indexedDBLocalPersistence, initializeAuth, type Auth } from "firebase/auth";
 import type { DatabaseMarker } from "@/lib/database";
 
 export const firebaseConfig = {
@@ -21,7 +21,23 @@ let authInstance: Auth | null = null;
 
 if (isFirebaseConfigured) {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-  authInstance = getAuth(app);
+  if (typeof window === "undefined") {
+    authInstance = getAuth(app);
+  } else {
+    try {
+      // Restore existing sessions before authStateReady resolves. Both stores
+      // survive closing the browser; localStorage covers browsers without IDB.
+      // Firebase persists refresh tokens and renews ID tokens automatically.
+      authInstance = initializeAuth(app, {
+        persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver,
+      });
+    } catch (error) {
+      // Next.js Fast Refresh can evaluate this module after Auth already exists.
+      if ((error as { code?: string }).code !== "auth/already-initialized") throw error;
+      authInstance = getAuth(app);
+    }
+  }
 }
 
 export const firebaseApp = app;
